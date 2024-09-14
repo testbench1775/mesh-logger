@@ -10,8 +10,9 @@ db_path = './nodeData.db'  # Replace with your actual database path
 
 args = {"config": ""}
 config_file = None
-if args.config is not None:
-    config_file = args.config
+if args['config'] is not None:
+    config_file = args['config']
+    
 system_config = initialize_config(config_file)
 
 # Route to serve the HTML template
