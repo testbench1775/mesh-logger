@@ -1,6 +1,5 @@
 import time
 import logging
-from pubsub import pub
 from utils import display_banner
 from message_processing import on_receive
 from config_init import initialize_config, get_interface, init_cli_parser, merge_config
