@@ -1,13 +1,15 @@
 import time
 import logging
+import threading
 from pubsub import pub
 from utils import display_banner
 from message_processing import on_receive
 from config_init import initialize_config, get_interface, init_cli_parser, merge_config
 from db_operations import initialize_database, process_and_insert_telemetry_data, get_db_connection, sync_data_to_server
-from signal import signal, SIGPIPE, SIG_DFL
+import signal
 
-signal(SIGPIPE,SIG_DFL) 
+if hasattr(signal, 'SIGPIPE'):
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 # Use the variable in the logging configuration
 logging.basicConfig(
@@ -15,6 +17,16 @@ logging.basicConfig(
     format='%(asctime)s: %(message)s',
     datefmt='%H:%M:%S'
 )
+
+def sync_database_periodically(system_config, interval=60):
+    """
+    This function will run in a separate thread to sync the database to the server periodically.
+    """
+    while True:
+        time.sleep(interval)
+        system_config['logger'].info("Syncing database to server...")
+        sync_data_to_server(system_config)
+        system_config['logger'].info("Database synced successfully.")
 
 def main():
     args = init_cli_parser()
@@ -24,11 +36,9 @@ def main():
     system_config = initialize_config(config_file)
     system_config['logger'] = logging.getLogger(__name__)
 
-
     log_level = getattr(logging, system_config['log_level'].upper(), logging.INFO)  # Convert string to logging level
+    system_config['logger'].setLevel(log_level)
 
-    system_config['logger'].setLevel(log_level) 
-    
     merge_config(system_config, args)
 
     interface = get_interface(system_config)
@@ -47,14 +57,17 @@ def main():
     def receive_packet(packet, interface):
         on_receive(system_config, packet, interface)
 
-    def onConnection(interface, topic=pub.AUTO_TOPIC): # called when we (re)connect to the radio
-        # defaults to broadcast, specify a destination ID if you wish
-        # interface.sendText("hello mesh")
+    def onConnection(interface, topic=pub.AUTO_TOPIC):  # called when we (re)connect to the radio
         system_config['logger'].info(f"Connected to the radio!")
         pass
 
     pub.subscribe(receive_packet, system_config['mqtt_topic'])
     pub.subscribe(onConnection, "meshtastic.connection.established")
+
+    # Start the database sync in a separate thread
+    sync_thread = threading.Thread(target=sync_database_periodically, args=(system_config, 300))  # sync every 5 minutes
+    sync_thread.daemon = True
+    sync_thread.start()
 
     try:
         while True:
