@@ -164,6 +164,8 @@ def get_telemetry_data():
 
     conn.close()
     return jsonify({"close_nodes": close_nodes, "far_nodes": far_nodes})
+
+
 @app.route('/sync', methods=['POST'])
 def sync_db():
     data = request.get_json()
