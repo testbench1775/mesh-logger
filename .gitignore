@@ -1,0 +1,15 @@
+__pycache__/
+js8call.db
+venv/
+.venv
+.idea
+fortunes.txt
+*.txt
+.db
+logs/*.txt
+logs/NODEINFO_APP.txt
+logs/POSITION_APP.txt
+logs/TELEMETRY_APP.txt
+nodeData.db
+logs/NODEINFO_APP.txt
+.backup
