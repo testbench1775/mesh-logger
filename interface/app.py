@@ -6,7 +6,7 @@ from ..config_init import initialize_config
 app = Flask(__name__)
 application = app  # For Elastic Beanstalk deployment
 
-db_path = '../nodeData.db'  # Replace with your actual database path     
+db_path = '../nodeData.db'  # Replace with your actual database path      
 
 args = {}
 config_file = None
