@@ -1,12 +1,12 @@
 import sqlite3
 from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, request
-from ..config_init import initialize_config
+from config_init import initialize_config
 
 app = Flask(__name__)
 application = app  # For Elastic Beanstalk deployment
 
-db_path = '../nodeData.db'  # Replace with your actual database path      
+db_path = './nodeData.db'  # Replace with your actual database path      
 
 args = {}
 config_file = None
@@ -127,21 +127,32 @@ def get_telemetry_data():
             "mqtt": row[18],
             "last_seen": last_seen,
             "uptime_string": uptime,
-            "path": system_config['flask_path']
+            "flask_path": system_config['flask_path']
         })
 
     # drop any rows without latitude
     telemetry_data = [row for row in telemetry_data if row['latitude'] is not None]
 
-    # Change any null values to '---'
+    # Change any null values to '---' and handle 'miles_to_base'
     for row in telemetry_data:
+        # Replace None values with '---'
         for key, value in row.items():
             if value is None:
                 row[key] = '---'
-
+        # Handle 'miles_to_base' value
+        miles = row.get('miles_to_base', '---')
+        if miles == '---':
+            row['miles_to_base'] = 9999.0  # Default value as float
+        else:
+            try:
+                row['miles_to_base'] = float(miles)
+            except ValueError:
+                # Assign default value if conversion fails
+                row['miles_to_base'] = 9999.0
+        
     # Create two lists, one for nodes within 100 miles of Boise, and everything else
-    close_nodes = [node for node in telemetry_data if node['miles_to_base'] < 100]
-    far_nodes = [node for node in telemetry_data if node['miles_to_base'] >= 100]
+    close_nodes = [node for node in telemetry_data if int(node['miles_to_base']) < 100]
+    far_nodes = [node for node in telemetry_data if int(node['miles_to_base']) >= 100]
 
     # Sort both lists based on miles_to_base
     close_nodes = sorted(close_nodes, key=lambda x: x['miles_to_base'])
@@ -149,56 +160,63 @@ def get_telemetry_data():
 
     conn.close()
     return jsonify({"close_nodes": close_nodes, "far_nodes": far_nodes})
-
 @app.route('/sync', methods=['POST'])
 def sync_db():
     data = request.get_json()
 
-    # Ensure the received data is a list of dictionaries
     if not isinstance(data, list):
         return jsonify({"error": "Expected a list of entries"}), 400
 
-    conn = sqlite3.connect(db_path)  # Replace with your actual database path
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Loop through the received data and insert/update it in the database
     for entry in data:
-        cursor.execute('''
-            INSERT OR REPLACE INTO TelemetryData (
-                sender_node_id, sender_short_name, timestamp, temperature, humidity, pressure,
-                battery_level, voltage, uptime_seconds, latitude, longitude, altitude,
-                sats_in_view, snr, hardware_model, sender_long_name, role
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            entry['sender_node_id'], entry['sender_short_name'], entry['timestamp'], entry['temperature'], entry['humidity'],
-            entry['pressure'], entry['battery_level'], entry['voltage'], entry['uptime_seconds'], entry['latitude'],
-            entry['longitude'], entry['altitude'], entry['sats_in_view'], entry['snr'], entry['hardware_model'],
-            entry['sender_long_name'], entry['role']
-        ))
+        # Prepare the list of columns and their corresponding values
+        columns = [
+            'sender_node_id', 'sender_short_name', 'timestamp', 'temperature', 'humidity', 'pressure',
+            'battery_level', 'voltage', 'uptime_seconds', 'latitude', 'longitude', 'altitude',
+            'sats_in_view', 'snr', 'hardware_model', 'sender_long_name', 'role', 'mqtt', 'miles_to_base'
+        ]
+        values = [entry.get(col) for col in columns]
 
-    # Commit the changes and close the connection
+        # Try to update the existing record
+        cursor.execute('''
+            UPDATE TelemetryData SET
+                sender_short_name = ?,
+                timestamp = ?,
+                temperature = ?,
+                humidity = ?,
+                pressure = ?,
+                battery_level = ?,
+                voltage = ?,
+                uptime_seconds = ?,
+                latitude = ?,
+                longitude = ?,
+                altitude = ?,
+                sats_in_view = ?,
+                snr = ?,
+                hardware_model = ?,
+                sender_long_name = ?,
+                role = ?,
+                mqtt = ?,
+                miles_to_base = ?
+            WHERE sender_node_id = ?
+        ''', values[1:] + [entry['sender_node_id']])
+
+        # If no rows were updated, insert a new record
+        if cursor.rowcount == 0:
+            cursor.execute('''
+                INSERT INTO TelemetryData (
+                    sender_node_id, sender_short_name, timestamp, temperature, humidity, pressure,
+                    battery_level, voltage, uptime_seconds, latitude, longitude, altitude,
+                    sats_in_view, snr, hardware_model, sender_long_name, role, mqtt, miles_to_base
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', values)
+
     conn.commit()
     conn.close()
 
     return jsonify({"message": "Data received and stored.", "status": "success"})
-
-@app.route('/update-database-schema', methods=['POST'])
-def update_database_schema():
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            ALTER TABLE TelemetryData
-            ADD COLUMN miles_to_base TEXT;
-        ''')
-
-        conn.commit()
-        conn.close()
-
-        return jsonify({"message": "Database schema updated successfully.", "status": "success"})
-    except Exception as e:
-        return jsonify({"message": f"Error updating database schema: {str(e)}", "status": "error"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
