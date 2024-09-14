@@ -198,7 +198,7 @@
         }
     
         function fetchTelemetryData() {
-            fetch(`${item.flask_path || ''}/get-telemetry-data`)
+            fetch(`${item.flask_path}/get-telemetry-data`)
                 .then(response => {
                     if (!response.ok) {
                         console.error('Network response was not ok:', response.statusText);
