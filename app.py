@@ -2,17 +2,20 @@ import sqlite3
 from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, request
 from config_init import initialize_config
+import argparse
 
 app = Flask(__name__)
 application = app  # For Elastic Beanstalk deployment
 
 db_path = './nodeData.db'  # Replace with your actual database path      
 
-args = {"config": ""}
+args = argparse.Namespace()
+args.config = None
+
 config_file = None
-if args['config'] is not None:
-    config_file = args['config']
-    
+if args.config is not None:
+    config_file = args.config
+
 system_config = initialize_config(config_file)
 
 # Route to serve the HTML template
