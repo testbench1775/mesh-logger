@@ -8,7 +8,7 @@ application = app  # For Elastic Beanstalk deployment
 
 db_path = './nodeData.db'  # Replace with your actual database path      
 
-args = {}
+args = {"config": ""}
 config_file = None
 if args.config is not None:
     config_file = args.config
