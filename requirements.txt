@@ -1,0 +1,10 @@
+flask
+pytz
+tzlocal
+meshtastic
+pyserial
+tzdata
+configparser
+meshtastic
+pyserial
+psutil

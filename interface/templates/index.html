@@ -198,8 +198,7 @@
         }
     
         function fetchTelemetryData() {
-            fetch('/get-telemetry-data') // Backend endpoint for fetching data
-                .then(response => response.json())
+            fetch(`${item.path || ''}/get-telemetry-data`) // Backend endpoint for fetching data                .then(response => response.json())
                 .then(data => {
                     var bounds = [];
                     const closeNodes = data.close_nodes;

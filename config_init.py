@@ -147,6 +147,8 @@ def initialize_config(config_file: str = None) -> dict[str, Any]:
     log_level = config['logging'].get('log_level', 'INFO')
     db_file = config['database'].get('file', 'nodeData.db')
     api_path = config['API'].get('api_path', None)
+    flask_path = config['flask'].get('path', '')
+
 
     # return dict with the configuration. This will be shared across the program.
     return {
@@ -160,7 +162,8 @@ def initialize_config(config_file: str = None) -> dict[str, Any]:
         'conn': None,
         'logger': None,
         'db_file': db_file,
-        'api_path': api_path
+        'api_path': api_path,
+        'flask_path': flask_path
     }
 
 def get_interface(system_config:dict[str, Any]) -> meshtastic.stream_interface.StreamInterface:

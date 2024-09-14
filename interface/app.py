@@ -1,11 +1,18 @@
 import sqlite3
 from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, request
+from ..config_init import initialize_config
 
 app = Flask(__name__)
 application = app  # For Elastic Beanstalk deployment
 
 db_path = '../nodeData.db'  # Replace with your actual database path    
+
+args = {}
+config_file = None
+if args.config is not None:
+    config_file = args.config
+system_config = initialize_config(config_file)
 
 # Route to serve the HTML template
 @app.route('/')
@@ -119,7 +126,8 @@ def get_telemetry_data():
             "miles_to_base": row[17],
             "mqtt": row[18],
             "last_seen": last_seen,
-            "uptime_string": uptime
+            "uptime_string": uptime,
+            "path": system_config['flask_path']
         })
 
     # drop any rows without latitude
