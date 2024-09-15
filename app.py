@@ -65,8 +65,8 @@ def get_telemetry_data():
     data = cursor.fetchall()
 
     telemetry_data = []
-    timezone_ = pytz.timezone('America/Denver')
-    # timezone_ = pytz.timezone(system_config['timezone'])
+    
+    timezone_ = pytz.timezone(system_config['timezone'])
     current_time = datetime.now(timezone.utc).astimezone(timezone_)
 
     for row in data:
