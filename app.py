@@ -24,9 +24,9 @@ def index():
     return render_template('index.html')  # Ensure index.html is in the 'templates' folder
 
 # Route to serve the HTML template
-@app.route('/sidebar')
+@app.route('/data')
 def sidebar():
-    return render_template('sidebar.html')  # Ensure index.html is in the 'templates' folder
+    return render_template('data.html')  # Ensure index.html is in the 'templates' folder
 
 # Route to provide telemetry data as JSON
 @app.route('/get-telemetry-data', methods=['GET'])

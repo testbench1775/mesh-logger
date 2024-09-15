@@ -48,6 +48,7 @@ def initialize_database(system_config):
                     neighbor_node_id TEXT,
                     miles_to_base REAL,
                     mqtt INTEGER DEFAULT 0,
+                    publicKey TEXT,
                     synced INTEGER 0
                 );
                 ''')
@@ -59,10 +60,34 @@ def initialize_database(system_config):
         logger.error(f"Error initializing database: {e}")
 
 
-def insert_telemetry_data(system_config, sender_node_id, timestamp=None, sender_short_name=None, to_node_id=None, temperature=None, humidity=None,
-                          pressure=None, battery_level=None, voltage=None, uptime_seconds=None, latitude=None, longitude=None, altitude=None, 
-                          sats_in_view=None, neighbor_node_id=None, snr=None, hardware_model=None, mac_address=None, sender_long_name=None, 
-                          role=None, dst_to_bs=None, viaMqtt=False, set_timestamp=True):
+def insert_telemetry_data(
+    system_config, 
+    sender_node_id, 
+    timestamp=None, 
+    sender_short_name=None, 
+    to_node_id=None, 
+    temperature=None, 
+    humidity=None,
+    pressure=None, 
+    battery_level=None, 
+    voltage=None, 
+    uptime_seconds=None, 
+    latitude=None, 
+    longitude=None, 
+    altitude=None,
+    sats_in_view=None, 
+    neighbor_node_id=None, 
+    snr=None, 
+    hardware_model=None, 
+    mac_address=None, 
+    sender_long_name=None,
+    role=None, 
+    dst_to_bs=None, 
+    viaMqtt=False, 
+    publicKey=None, 
+    set_timestamp=True
+    ):
+    
     logger = system_config['logger']
 
     try:
@@ -142,6 +167,9 @@ def insert_telemetry_data(system_config, sender_node_id, timestamp=None, sender_
             if viaMqtt:
                 conn.execute('''UPDATE TelemetryData SET mqtt = ? WHERE sender_node_id = ?''', (viaMqtt, sender_node_id))
                 logger.debug(f"--- Updated mqtt: {viaMqtt}")
+            if viaMqtt:
+                conn.execute('''UPDATE TelemetryData SET publicKey = ? WHERE sender_node_id = ?''', (publicKey, sender_node_id))
+                logger.debug(f"--- Updated mqtt: {publicKey}")
             if True:
                 conn.execute('''UPDATE TelemetryData SET synced = ? WHERE sender_node_id = ?''', (0, sender_node_id))
                 logger.debug(f"--- Updated synced: False")
@@ -173,27 +201,26 @@ def process_and_insert_telemetry_data(system_config, interface):
         
         interface_values = interface.nodes.values()
         #  Disable logging for the loop
-        logging.getLogger().setLevel(logging.CRITICAL + 1)
+        # logging.getLogger().setLevel(logging.CRITICAL + 1)
 
         log_text_to_file('', './logs/INTERFACE_DATA.txt', clear_first=True)
 
         for node in interface_values:
-            # Directly access the user, position, and metrics dictionaries
             user_data = node.get('user', {})
             position_data = node.get('position', {})
             device_metrics = node.get('deviceMetrics', {})
 
-            log_text_to_file(f'{user_data}\n{position_data}\n{device_metrics}', './logs/INTERFACE_DATA.txt')
+            # Log the user data to ensure it contains the publicKey
+            logger.debug(f"user_data for node {node.get('id', 'unknown')}: {user_data}")
             
-            # Fetch the sender_node_id
             sender_node_id = user_data.get('id')
-
-            # Check if sender_node_id exists and log the error if it is None
+            
             if not sender_node_id:
-                logging.error(f"Missing sender_node_id for node: {user_data}")
-                continue  # Skip inserting data for this node if sender_node_id is missing
+                logger.error(f"Missing sender_node_id for node: {user_data}")
+                continue
 
-            # logger.info(f"Processing node: {sender_node_id}, position: {position_data}, metrics: {device_metrics}")
+            publicKey = user_data.get('publicKey', None)
+            logger.debug(f"Public key for node {sender_node_id}: {publicKey}")
             
             insert_telemetry_data(
                 conn,
@@ -202,10 +229,11 @@ def process_and_insert_telemetry_data(system_config, interface):
                 sender_long_name=user_data.get('longName'),
                 mac_address=user_data.get('macaddr'),
                 hardware_model=user_data.get('hwModel'),
+                publicKey=publicKey,
                 latitude=position_data.get('latitude'),
                 longitude=position_data.get('longitude'),
                 altitude=position_data.get('altitude'),
-                sats_in_view=position_data.get('satsInView'),  # Note case sensitivity here
+                sats_in_view=position_data.get('satsInView'),
                 battery_level=device_metrics.get('batteryLevel'),
                 voltage=device_metrics.get('voltage'),
                 uptime_seconds=device_metrics.get('uptimeSeconds'),

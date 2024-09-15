@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telemetry Data Table</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/dataTables.bootstrap5.min.css">
+
+    <style>
+        body {
+            margin: 20px;
+        }
+        table.dataTable thead {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 class="my-4">Telemetry Data Table</h2>
+        <table id="telemetryTable" class="table table-striped" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Node Name</th>
+                    <th>Short Name</th>
+                    <th>Temperature (°C)</th>
+                    <th>Humidity (%)</th>
+                    <th>Pressure (hPa)</th>
+                    <th>Battery Level (%)</th>
+                    <th>Voltage (V)</th>
+                    <th>Uptime (s)</th>
+                    <th>Timestamp</th>
+                    <th>Last Seen</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dynamic rows will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Correct order of scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> <!-- jQuery first -->
+    <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script> <!-- DataTables -->
+    <script src="https://cdn.datatables.net/1.13.1/js/dataTables.bootstrap5.min.js"></script> <!-- DataTables Bootstrap integration -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            var telemetryTable = $('#telemetryTable').DataTable({
+                "paging": true,
+                "searching": true,
+                "ordering": true,  // Enable sorting
+                "autoWidth": false,
+                "responsive": true,
+                "lengthChange": true,  // Allows changing the number of rows shown
+                "pageLength": 10,  // Default number of rows per page
+            });
+
+            function formatValue(value) {
+                // Replace null, undefined, or non-numeric values with 0.00
+                return value === null || value === undefined || value === '---' || value === '' ? '0.00' : value;
+            }
+
+            function fetchTelemetryData() {
+                fetch('/get-telemetry-data')
+                    .then(response => {
+                        if (!response.ok) {
+                            console.error('Network response was not ok:', response.statusText);
+                            return;
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (!data) {
+                            console.error('No data received from server.');
+                            return;
+                        }
+
+                        const closeNodes = data.close_nodes;
+                        const farNodes = data.far_nodes;
+                        const allNodes = closeNodes.concat(farNodes);
+
+                        telemetryTable.clear(); // Clear existing table data
+
+                        allNodes.forEach(item => {
+                            telemetryTable.row.add([
+                                formatValue(item.sender_long_name),  // Node Name
+                                formatValue(item.sender_short_name),  // Short Name
+                                formatValue(item.temperature),  // Temperature
+                                formatValue(item.humidity),  // Humidity
+                                formatValue(item.pressure),  // Pressure
+                                formatValue(item.battery_level),  // Battery Level
+                                formatValue(item.voltage),  // Voltage
+                                formatValue(item.uptime_seconds),  // Uptime
+                                formatValue(item.timestamp),  // Timestamp (new column)
+                                formatValue(item.last_seen)  // Last Seen
+                            ]).draw(false);
+                        });
+                    })
+                    .catch(error => console.error('Error fetching telemetry data:', error));
+            }
+
+            // Initial data load
+            fetchTelemetryData();
+
+            // Update the table every 2 minutes, with sorting enabled
+            setInterval(fetchTelemetryData, 120000);
+        });
+    </script>
+
+</body>
+</html>

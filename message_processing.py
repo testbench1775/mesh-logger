@@ -1,7 +1,7 @@
 from utils import get_node_names, format_real_number
 from db_operations import insert_telemetry_data
 from datetime import datetime, timezone
-
+import traceback
 
 def on_receive(system_config, packet, interface):
     logger = system_config['logger']
@@ -29,6 +29,7 @@ def on_receive(system_config, packet, interface):
         latitude = format_real_number(location_data.get('latitude', None), precision=7)
         longitude = format_real_number(location_data.get('longitude', None), precision=7)
         altitude = format_real_number(location_data.get('altitude', None))
+        sats_in_view=format_real_number(location_data.get('satsInView', None))
 
         user_data = decoded_packet.get('user', {})
         snr = format_real_number(packet.get('rxSnr', None))
@@ -36,8 +37,9 @@ def on_receive(system_config, packet, interface):
         mac_address = user_data.get('macaddr', None)
         role = user_data.get('role', None)
         viaMqtt = packet.get('viaMqtt', False)
+        publicKey = packet.get('publicKey', None)
 
-        insert_telemetry_data(system_config, sender_node_id, timestamp=rx_time, sender_short_name=sender_short_name, to_node_id=to_node_id, temperature=temperature, humidity=humidity, pressure=pressure, battery_level=battery, voltage=voltage, uptime_seconds=uptime, latitude=latitude, longitude=longitude, altitude=altitude, sats_in_view=None, neighbor_node_id=None, snr=snr, hardware_model=hardware_model, mac_address=mac_address, sender_long_name=sender_long_name, role=role, dst_to_bs=None, viaMqtt=viaMqtt)
+        insert_telemetry_data(system_config, sender_node_id, timestamp=rx_time, sender_short_name=sender_short_name, to_node_id=to_node_id, temperature=temperature, humidity=humidity, pressure=pressure, battery_level=battery, voltage=voltage, uptime_seconds=uptime, latitude=latitude, longitude=longitude, altitude=altitude, sats_in_view=sats_in_view, neighbor_node_id=None, snr=snr, hardware_model=hardware_model, mac_address=mac_address, sender_long_name=sender_long_name, role=role, dst_to_bs=None, viaMqtt=viaMqtt, publicKey=publicKey)
 
         system_config['logger'].debug(f"rxPacket: {sender_short_name} to {to_short_name} at {rx_time}")
         system_config['logger'].info(f"-------------------------------------------------------- {portnum} ")
@@ -52,7 +54,8 @@ def on_receive(system_config, packet, interface):
                 # insert_telemetry_data(system_config, sender_node_id=sender_node_id, timestamp=rx_time, to_node_id=to_node_id, sender_short_name=sender_short_name, sender_long_name=sender_long_name, snr=snr, viaMqtt=viaMqtt)
             
             except Exception as e:
-                logger.error(f"Error processing TEXT_MESSAGE_APP: {e}")
+                system_config['logger'].error(f"Error processing TEXT_MESSAGE_APP: {e}")
+                system_config['logger'].debug(traceback.format_exc())
 
         # Handle TELEMETRY_APP
         elif portnum == 'TELEMETRY_APP':
@@ -61,7 +64,8 @@ def on_receive(system_config, packet, interface):
                 # insert_telemetry_data(system_config, sender_node_id=sender_node_id, timestamp=rx_time, to_node_id=to_node_id, sender_short_name=sender_short_name, sender_long_name=sender_long_name, temperature=temperature, humidity=humidity, pressure=pressure, battery_level=battery, voltage=voltage, uptime_seconds=uptime, viaMqtt=viaMqtt)
                 pass
             except Exception as e:
-                logger.error(f"Error processing TELEMETRY_APP: {e}")
+                system_config['logger'].error(f"Error processing TELEMETRY_APP: {e}")
+                system_config['logger'].debug(traceback.format_exc())
 
         # # Handle POSITION_APP
         elif portnum == 'POSITION_APP':
@@ -70,7 +74,8 @@ def on_receive(system_config, packet, interface):
                 # insert_telemetry_data(system_config, sender_node_id=sender_node_id, timestamp=rx_time, to_node_id=to_node_id, sender_short_name=sender_short_name, sender_long_name=sender_long_name, latitude=latitude, longitude=longitude, altitude=altitude, viaMqtt=viaMqtt)
                 pass
             except Exception as e:
-                logger.error(f"Error processing POSITION_APP: {e}")
+                system_config['logger'].error(f"Error processing POSITION_APP: {e}")
+                system_config['logger'].debug(traceback.format_exc())
 
         # Handle NEIGHBORINFO_APP
         elif portnum == 'NEIGHBORINFO_APP':
@@ -79,6 +84,8 @@ def on_receive(system_config, packet, interface):
                 pass
             except Exception as e:
                 system_config['logger'].info(f"Error processing NEIGHBORINFO_APP: {e}")
+                system_config['logger'].debug(traceback.format_exc())
+                
 
         # Handle WAYPOINT_APP
         elif portnum == 'WAYPOINT_APP':
@@ -87,6 +94,7 @@ def on_receive(system_config, packet, interface):
                 pass
             except Exception as e:
                 system_config['logger'].info(f"Error processing WAYPOINT_APP: {e}")
+                system_config['logger'].debug(traceback.format_exc())
 
         # Handle ROUTING_APP
         elif portnum == 'ROUTING_APP':
@@ -95,6 +103,7 @@ def on_receive(system_config, packet, interface):
                 pass
             except Exception as e:
                 system_config['logger'].info(f"Error processing ROUTING_APP: {e}")
+                system_config['logger'].debug(traceback.format_exc())
 
         # Handle NODEINFO_APP
         elif portnum == 'NODEINFO_APP':
@@ -103,4 +112,5 @@ def on_receive(system_config, packet, interface):
                 # insert_telemetry_data(system_config, sender_node_id=sender_node_id, timestamp=rx_time, to_node_id=to_node_id, sender_short_name=sender_short_name, sender_long_name=sender_long_name, mac_address=mac_address, hardware_model=hardware_model, role=role, viaMqtt=viaMqtt)
                 pass
             except Exception as e:
-                logger.error(f"Error processing NODEINFO_APP: {e}")
+                system_config['logger'].error(f"Error processing NODEINFO_APP: {e}")
+                system_config['logger'].debug(traceback.format_exc())

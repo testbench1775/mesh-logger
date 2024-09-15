@@ -1,3 +1,4 @@
+# Sometimes the CPanel GIT tool requires you to delete the db to load
 import os
 
 def delete_db_file(db_file='nodeData.db'):
