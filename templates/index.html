@@ -114,7 +114,7 @@
                     </tr>
                     <tr>
                         <td style="text-align: right;"><strong>Temperature:</strong></td>
-                        <td colspan="2" style="text-align: center;">${item.temperature || 'N/A'} 째C</td>
+                        <td colspan="2" style="text-align: center;">${item.temperature || 'N/A'} C</td>
                     </tr>
                     <tr>
                         <td style="text-align: right;"><strong>Humidity:</strong></td>
@@ -198,8 +198,8 @@
         }
     
         function fetchTelemetryData() {
-            // fetch('/meshlogger/get-telemetry-data')
-            fetch('/get-telemetry-data')
+            fetch('/meshlogger/get-telemetry-data')
+            // fetch('/get-telemetry-data')
             .then(response => {
                     if (!response.ok) {
                         console.error('Network response was not ok:', response.statusText);
