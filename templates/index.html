@@ -175,7 +175,7 @@
                             <small>${(item.miles_to_base || 0.00).toFixed(1)} miles</small>
                         </div>
                         <div class="small d-flex w-100 align-items-center justify-content-between">
-                            ${item.temperature ? `${item.temperature} 째C` : ''} 
+                            ${item.temperature ? `${item.temperature} C` : ''} 
                             ${item.humidity ? ` | ${item.humidity} %` : ''}
                             <small>${item.last_seen}</small>
                         </div>
@@ -198,8 +198,9 @@
         }
     
         function fetchTelemetryData() {
-            fetch('/meshlogger/get-telemetry-data')
-                .then(response => {
+            // fetch('/meshlogger/get-telemetry-data')
+            fetch('/get-telemetry-data')
+            .then(response => {
                     if (!response.ok) {
                         console.error('Network response was not ok:', response.statusText);
                         return;

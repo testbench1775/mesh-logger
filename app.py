@@ -173,6 +173,7 @@ def sync_db():
     if not isinstance(data, list):
         return jsonify({"error": "Expected a list of entries"}), 400
 
+    
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
@@ -185,42 +186,47 @@ def sync_db():
         ]
         values = [entry.get(col) for col in columns]
 
-        # Try to update the existing record
-        cursor.execute('''
-            UPDATE TelemetryData SET
-                sender_short_name = ?,
-                timestamp = ?,
-                temperature = ?,
-                humidity = ?,
-                pressure = ?,
-                battery_level = ?,
-                voltage = ?,
-                uptime_seconds = ?,
-                latitude = ?,
-                longitude = ?,
-                altitude = ?,
-                sats_in_view = ?,
-                snr = ?,
-                hardware_model = ?,
-                sender_long_name = ?,
-                role = ?,
-                mqtt = ?,
-                miles_to_base = ?
-            WHERE sender_node_id = ?
-        ''', values[1:] + [entry['sender_node_id']])
-
-        # If no rows were updated, insert a new record
-        if cursor.rowcount == 0:
+        try:
+            # Try to update the existing record
             cursor.execute('''
-                INSERT INTO TelemetryData (
-                    sender_node_id, sender_short_name, timestamp, temperature, humidity, pressure,
-                    battery_level, voltage, uptime_seconds, latitude, longitude, altitude,
-                    sats_in_view, snr, hardware_model, sender_long_name, role, mqtt, miles_to_base
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', values)
+                UPDATE TelemetryData SET
+                    sender_short_name = ?,
+                    timestamp = ?,
+                    temperature = ?,
+                    humidity = ?,
+                    pressure = ?,
+                    battery_level = ?,
+                    voltage = ?,
+                    uptime_seconds = ?,
+                    latitude = ?,
+                    longitude = ?,
+                    altitude = ?,
+                    sats_in_view = ?,
+                    snr = ?,
+                    hardware_model = ?,
+                    sender_long_name = ?,
+                    role = ?,
+                    mqtt = ?,
+                    miles_to_base = ?
+                WHERE sender_node_id = ?
+            ''', values[1:] + [entry['sender_node_id']])
+
+            # If no rows were updated, insert a new record
+            if cursor.rowcount == 0:
+                cursor.execute('''
+                    INSERT INTO TelemetryData (
+                        sender_node_id, sender_short_name, timestamp, temperature, humidity, pressure,
+                        battery_level, voltage, uptime_seconds, latitude, longitude, altitude,
+                        sats_in_view, snr, hardware_model, sender_long_name, role, mqtt, miles_to_base
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', values)
+
+        except Exception as e: 
+            return jsonify({"message": e, "status": "failed"})
 
     conn.commit()
     conn.close()
+
 
     return jsonify({"message": "Data received and stored.", "status": "success"})
 
