@@ -8,6 +8,7 @@ from config_init import initialize_config, get_interface, init_cli_parser, merge
 from db_operations import initialize_database, process_and_insert_telemetry_data, get_db_connection, sync_data_to_server
 import signal
 
+
 if hasattr(signal, 'SIGPIPE'):
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
@@ -43,6 +44,13 @@ def main():
 
     interface = get_interface(system_config)
 
+    host_node_num = interface.myInfo.my_node_num
+
+    # if the base location is not set, use the base nodes location, otherwise, use boise as hard sp.
+    if system_config['general']['location']['base_lat'] == 0.0 or system_config['general']['location']['base_lon'] == 0.0:
+        system_config['general']['location']['latitude'] = interface.nodesByNum[host_node_num]['position']['latitude']
+        system_config['general']['location']['longitude'] = interface.nodesByNum[host_node_num]['position']['longitude']
+
     # Start the database connection here so we can close it on KeyboardInterrupt
     system_config['conn'] = get_db_connection()
 
@@ -52,17 +60,34 @@ def main():
     process_and_insert_telemetry_data(system_config, interface)
 
     display_banner()
-    system_config['logger'].info(f"Testbench Mesh Logger is running on {system_config['interface_type']} interface...")
+
+    system_config['logger'].info(f"Testbench Mesh Logger is running on {system_config['interface_type']} interface...\n")
+
+    system_config['logger'].info(interface.showNodes()) # <-- USAGE self = interface
+
 
     def receive_packet(packet, interface):
         on_receive(system_config, packet, interface)
 
-    def onConnection(interface, topic=pub.AUTO_TOPIC):  # called when we (re)connect to the radio
+    def onConnection(interface, topic=pub.AUTO_TOPIC):  # supposed to be called when connecting ¯\_(ツ)_/¯
         system_config['logger'].info(f"Connected to the radio!")
-        pass
 
-    pub.subscribe(receive_packet, system_config['mqtt_topic'])
+    def onDisconnect(interface, topic=pub.AUTO_TOPIC):
+        system_config['logger'].info(f"Connection lost!")
+
+    # - meshtastic.connection.established - published once we've successfully connected to the radio and downloaded the node DB
+    # - meshtastic.connection.lost - published once we've lost our link to the radio
+    # - meshtastic.receive.text(packet) - delivers a received packet as a dictionary, if you only care about a particular
+    # type of packet, you should subscribe to the full topic name.  If you want to see all packets, simply subscribe to "meshtastic.receive".
+    # - meshtastic.receive.position(packet)
+    # - meshtastic.receive.user(packet)
+    # - meshtastic.receive.data.portnum(packet) (where portnum is an integer or well known PortNum enum)
+    # - meshtastic.node.updated(node = NodeInfo) - published when a node in the DB changes (appears, location changed, username changed, etc...)
+    # - meshtastic.log.line(line) - a raw unparsed log line from the radio
+
+    pub.subscribe(receive_packet, "meshtastic.receive")
     pub.subscribe(onConnection, "meshtastic.connection.established")
+    pub.subscribe(onDisconnect, "meshtastic.connection.lost")
 
     # Start the database sync in a separate thread
     sync_thread = threading.Thread(target=sync_database_periodically, args=(system_config, 300))  # sync every 5 minutes

@@ -148,6 +148,11 @@ def initialize_config(config_file: str = None) -> dict[str, Any]:
     db_file = config['database'].get('file', 'nodeData.db')
     api_path = config['API'].get('api_path', None)
     flask_path = config['flask'].get('path', '')
+    base_location = { # defaults to Boise, ID
+        'base_lat': float(config['general'].get('base_lat', 0.0)),
+        'base_lon': float(config['general'].get('base_lon', 0.0))
+    }
+    base_radius = float(config['general'].get('radius', 100.0))
 
 
     # return dict with the configuration. This will be shared across the program.
@@ -157,13 +162,16 @@ def initialize_config(config_file: str = None) -> dict[str, Any]:
         'hostname': hostname,
         'port': port,
         'timezone': timezone,
-        'mqtt_topic': 'meshtastic.receive',
         'log_level': log_level,
         'conn': None,
         'logger': None,
         'db_file': db_file,
         'api_path': api_path,
-        'flask_path': flask_path
+        'flask_path': flask_path,
+        'general': {
+            'location': base_location,
+            'radius': base_radius
+        }
     }
 
 def get_interface(system_config:dict[str, Any]) -> meshtastic.stream_interface.StreamInterface:

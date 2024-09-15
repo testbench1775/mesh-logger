@@ -11,6 +11,10 @@
         body {
             margin: 20px;
         }
+        .container {
+            max-width: 90%;  /* Table width set to 90% of the viewport */
+            margin: 0 auto;  /* Center the container */
+        }
         table.dataTable thead {
             background-color: #f4f4f4;
         }
@@ -94,9 +98,13 @@
                                 formatValue(item.pressure),  // Pressure
                                 formatValue(item.battery_level),  // Battery Level
                                 formatValue(item.voltage),  // Voltage
+                                
+                                formatValue(item.sats_in_view),
                                 formatValue(item.uptime_seconds),  // Uptime
+                                formatValue(item.uptime_string),
                                 formatValue(item.timestamp),  // Timestamp (new column)
                                 formatValue(item.last_seen)  // Last Seen
+
                             ]).draw(false);
                         });
                     })

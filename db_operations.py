@@ -2,7 +2,7 @@ import logging
 import sqlite3
 import threading
 import requests
-from utils import log_text_to_file, haversine_distance
+from utils import log_text_to_file, haversine_distance, format_real_number
 
 
 from meshtastic import BROADCAST_NUM
@@ -137,7 +137,7 @@ def insert_telemetry_data(
                 logger.debug(f"--- Updated longitude: {longitude}")
                 # calculate distance to base station
                 # These are for boise, ID. Maybe change to a variable later
-                distance = haversine_distance(43.6008608,-116.2750972, latitude, longitude)
+                distance = format_real_number(haversine_distance(system_config['general']['location']['base_lat'],system_config['general']['location']['base_lon'], latitude, longitude))
                 conn.execute('''UPDATE TelemetryData SET miles_to_base = ? WHERE sender_node_id = ?''', (distance, sender_node_id))
                 logger.debug(f"--- Updated miles_to_base: {distance}")
             if altitude:
@@ -201,7 +201,7 @@ def process_and_insert_telemetry_data(system_config, interface):
         
         interface_values = interface.nodes.values()
         #  Disable logging for the loop
-        # logging.getLogger().setLevel(logging.CRITICAL + 1)
+        logging.getLogger().setLevel(logging.CRITICAL + 1)
 
         log_text_to_file('', './logs/INTERFACE_DATA.txt', clear_first=True)
 
@@ -312,5 +312,9 @@ def sync_data_to_server(system_config):
         else:
             logger.error("Failed to sync data: %d %s", response.status_code, response.text)
 
+        system_config['logger'].info(f"--------------------------------------------------------")
+
+
     except Exception as e:
         logger.error("An error occurred during data sync: %s", str(e))
+        system_config['logger'].info(f"--------------------------------------------------------")
