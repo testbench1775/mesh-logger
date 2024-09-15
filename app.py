@@ -1,7 +1,6 @@
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, jsonify, request
-import pytz
 from config_init import initialize_config
 import argparse 
 
@@ -65,14 +64,13 @@ def get_telemetry_data():
     data = cursor.fetchall()
 
     telemetry_data = []
-    # Current time in Mountain Time
-    timezone_ = pytz.timezone(system_config['timezone'])
-    current_time = datetime.now(timezone.utc).astimezone(timezone_)
+    current_time = datetime.now(timezone.utc)
 
     for row in data:
         # Convert the row[2] timestamp to a datetime object (assuming it's a string, format it accordingly)
-        timestamp = datetime.strptime(row[2], '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+        timestamp = datetime.strptime(row[2], '%Y-%m-%d %H:%M:%S')  # Adjust format as per your timestamp
         
+
         # Calculate the difference
         time_difference = current_time - timestamp
         days = time_difference.days
