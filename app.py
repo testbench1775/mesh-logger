@@ -1,8 +1,9 @@
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, jsonify, request
+import pytz
 from config_init import initialize_config
-import argparse
+import argparse 
 
 app = Flask(__name__)
 application = app  # For Elastic Beanstalk deployment
@@ -64,7 +65,9 @@ def get_telemetry_data():
     data = cursor.fetchall()
 
     telemetry_data = []
-    current_time = datetime.now()
+    # Current time in Mountain Time
+    timezone_ = pytz.timezone(system_config['timezone'])
+    current_time = datetime.now(timezone.utc).astimezone(timezone_)
 
     for row in data:
         # Convert the row[2] timestamp to a datetime object (assuming it's a string, format it accordingly)

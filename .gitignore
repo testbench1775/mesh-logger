@@ -9,3 +9,4 @@ venv/
 .txt
 .backup
 nodeData.db.backup
+nodeData.db
