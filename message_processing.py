@@ -16,7 +16,7 @@ def on_receive(system_config, packet, interface):
         to_node_id = packet.get('toId')
         sender_short_name, sender_long_name = get_node_names(interface, sender_node_id)
         to_short_name, to_long_name = get_node_names(interface, to_node_id)
-        rx_time = datetime.now(tzlocal.get_localzone()).strftime('%Y-%m-%d %H:%M:%S')
+        rx_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         viaMqtt = packet.get('viaMqtt', False)
         system_config['logger'].debug(f"rxPacket: {sender_short_name} to {to_short_name} at {rx_time}")
 
