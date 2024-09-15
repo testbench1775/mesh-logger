@@ -89,7 +89,7 @@ def format_real_number(value, precision=2):
         return None
 
     real_value = float(value)
-    return f"{real_value:.{precision}f}"
+    return float(f"{real_value:.{precision}f}")
 
 
 def haversine_distance(lat1, lon1, lat2, lon2):

@@ -25,7 +25,8 @@ def initialize_database(system_config):
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS TelemetryData (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp DATETIME NOT NULL DEFAULT (datetime('now','localtime')),
+                    timestamp DATETIME DEFAULT (datetime('now','utc')),
+                    first_contact DATETIME DEFAULT (datetime('now','utc')),
                     sender_node_id TEXT NOT NULL UNIQUE,
                     to_node_id TEXT,
                     sender_long_name TEXT,
@@ -46,7 +47,8 @@ def initialize_database(system_config):
                     mac_address TEXT,
                     neighbor_node_id TEXT,
                     miles_to_base REAL,
-                    mqtt bool DEFAULT 0
+                    mqtt INTEGER DEFAULT 0,
+                    synced INTEGER 0
                 );
                 ''')
 
@@ -140,6 +142,9 @@ def insert_telemetry_data(system_config, sender_node_id, timestamp=None, sender_
             if viaMqtt:
                 conn.execute('''UPDATE TelemetryData SET mqtt = ? WHERE sender_node_id = ?''', (viaMqtt, sender_node_id))
                 logger.debug(f"--- Updated mqtt: {viaMqtt}")
+            if True:
+                conn.execute('''UPDATE TelemetryData SET synced = ? WHERE sender_node_id = ?''', (0, sender_node_id))
+                logger.debug(f"--- Updated synced: False")
             if timestamp and set_timestamp:
                 conn.execute('''UPDATE TelemetryData SET timestamp = ? WHERE sender_node_id = ?''', (timestamp, sender_node_id))
                 logger.debug(f"--- Updated timestamp: {timestamp}")
@@ -147,6 +152,7 @@ def insert_telemetry_data(system_config, sender_node_id, timestamp=None, sender_
                 conn.execute('''UPDATE TelemetryData 
                                 SET timestamp = datetime('now','localtime') 
                                 WHERE sender_node_id = ?;''', (sender_node_id,))
+
             
 
             logger.info(f"--------------------------------------------------------")
@@ -218,6 +224,7 @@ def process_and_insert_telemetry_data(system_config, interface):
         logging.getLogger().setLevel(logging.INFO)
         logger.info("Telemetry data processing complete.")
 
+
 def sync_data_to_server(system_config):
     logger = system_config['logger']
     try:
@@ -225,28 +232,43 @@ def sync_data_to_server(system_config):
 
         # Ensure the connection is open
         if conn is None or conn.cursor() is None:
-            logging.error("Cannot operate on a closed database.")
+            logger.error("Cannot operate on a closed database.")
             return
         
-        if not system_config['api_path'] is not None:
-            logging.error("DB Push to API Failed. No API path is not set in config file.")
+        if system_config['api_path'] is None:
+            logger.error("DB Push to API Failed. No API path set in config file.")
             return
         
         # Connect to the offline database
         cursor = conn.cursor()
 
-        # Fetch all data from the TelemetryData table
-        cursor.execute("SELECT * FROM TelemetryData")
+        # Fetch all data including 'synced' column
+        cursor.execute("SELECT * FROM TelemetryData WHERE synced = 0")
         rows = cursor.fetchall()
+
+        # If there is no data to sync, log and return
+        if not rows:
+            logger.info("No unsynced data to sync.")
+            return
 
         # Dynamically get the column names from the database cursor description
         column_names = [description[0] for description in cursor.description]
 
+        # Initialize data as an empty list
+        data = []
+
         # Prepare data as a list of dictionaries
         data = [dict(zip(column_names, row)) for row in rows]
 
+        # Remove the 'synced' key from each dictionary
+        for record in data:
+            record.pop('synced', None)  # Use pop to safely remove 'synced' if it exists
+
+        # Get the ids of the rows that will be synced
+        ids_to_sync = [row[0] for row in rows]  # Assuming 'id' is the first column
+
         # Debug logging to verify data structure
-        logger.info(f"Database synced with {system_config['api_path']}")
+        logger.info(f"Attempting to sync {len(rows)} records with {system_config['api_path']}")
 
         # Send the data to the server using a POST request
         response = requests.post(system_config['api_path'], json=data, headers={'Content-Type': 'application/json'})
@@ -254,8 +276,13 @@ def sync_data_to_server(system_config):
         # Handle the server response
         if response.status_code == 200:
             logger.info("Data synced successfully: %s", response.json())
+
+            # If the data was successfully synced, mark only the fetched records as synced using their ids
+            cursor.execute(f"UPDATE TelemetryData SET synced = 1 WHERE id IN ({','.join(['?'] * len(ids_to_sync))})", ids_to_sync)
+            conn.commit()
+            logger.info(f"{len(rows)} records marked as synced.")
         else:
-            logger.info("Failed to sync data: %d %s", response.status_code, response.text)
+            logger.error("Failed to sync data: %d %s", response.status_code, response.text)
 
     except Exception as e:
-        logger.info("An error occurred during data sync: %s", str(e))
+        logger.error("An error occurred during data sync: %s", str(e))

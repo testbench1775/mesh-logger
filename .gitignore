@@ -10,3 +10,4 @@ venv/
 .backup
 nodeData.db.backup
 nodeData.db
+.db
