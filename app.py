@@ -68,8 +68,7 @@ def get_telemetry_data():
 
     for row in data:
         # Convert the row[2] timestamp to a datetime object (assuming it's a string, format it accordingly)
-        timestamp = datetime.strptime(row[2], '%Y-%m-%d %H:%M:%S')  # Adjust format as per your timestamp
-        
+        timestamp = datetime.strptime(row[2], '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
 
         # Calculate the difference
         time_difference = current_time - timestamp
