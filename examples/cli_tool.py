@@ -1,7 +1,12 @@
 import argparse
 import meshtastic.tcp_interface
+import sys
 
-mesh_interface = meshtastic.tcp_interface.TCPInterface(hostname='192.168.1.151')
+try:
+    mesh_interface = meshtastic.tcp_interface.TCPInterface(hostname='192.168.1.151')
+except Exception as e:
+    print(f"Error connecting to the mesh interface: {e}")
+    sys.exit(1)
 
 def list_functions():
     functions = {
@@ -22,24 +27,30 @@ def show_menu():
 
 def execute_function(choice, functions):
     func_name, func = functions[choice]
-    if func_name == "Show Nodes":
-        print(func())
-    elif func_name == "Send Text":
-        text = input("Enter the text to send: ")
-        destination = input("Enter the destination ID (or leave blank for broadcast): ") or None
-        wantAck = input("Want acknowledgment? (y/n): ").lower() == 'y'
-        func(text, destination, wantAck)
-    elif func_name == "Send Position":
-        lat = float(input("Enter latitude: "))
-        lon = float(input("Enter longitude: "))
-        alt = int(input("Enter altitude: "))
-        func(lat, lon, alt)
-    elif func_name == "Send Trace Route":
-        dest = input("Enter destination ID: ")
-        hop_limit = int(input("Enter hop limit: "))
-        func(dest, hop_limit)
-    elif func_name == "Send Telemetry":
-        func()
+    try:
+        if func_name == "Show Nodes":
+            print(func())
+        elif func_name == "Send Text":
+            text = input("Enter the text to send: ")
+            destination = input("Enter the destination ID (or leave blank for broadcast): ") or None
+            wantAck = input("Want acknowledgment? (y/n): ").lower() == 'y'
+            func(text, destination, wantAck)
+        elif func_name == "Send Position":
+            lat = float(input("Enter latitude: "))
+            lon = float(input("Enter longitude: "))
+            alt = int(input("Enter altitude: "))
+            func(lat, lon, alt)
+        elif func_name == "Send Trace Route":
+            dest = input("Enter destination ID: ")
+            hop_limit = int(input("Enter hop limit: "))
+            func(dest, hop_limit)
+        elif func_name == "Send Telemetry":
+            func()
+    except ValueError as ve:
+        print(f"Input error: {ve}. Please enter the correct type of values.")4
+        
+    except Exception as e:
+        print(f"An error occurred while executing the function: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="MeshInterface CLI")
@@ -51,7 +62,10 @@ def main():
         if choice == 'q':
             break
         elif choice in functions:
-            execute_function(choice, functions)
+            try:
+                execute_function(choice, functions)
+            except Exception as e:
+                print(f"Error executing the selected function: {e}")
         else:
             print("Invalid choice. Please try again.")
 

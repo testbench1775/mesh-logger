@@ -6,7 +6,7 @@ import meshtastic.serial_interface
 import meshtastic.tcp_interface
 import serial.tools.list_ports
 import argparse
-
+import logging
 
 def init_cli_parser() -> argparse.Namespace:
     """Function build the CLI parser and parses the arguments.
@@ -144,7 +144,7 @@ def initialize_config(config_file: str = None) -> dict[str, Any]:
     hostname = config['interface'].get('hostname', None)
     port = config['interface'].get('port', None)
     timezone = config['timezone'].get('timezone', 'UTC')
-    log_level = config['logging'].get('log_level', 'INFO')
+    log_level = config['logging'].get('log_level', 'INFO').upper()
     db_file = config['database'].get('file', 'nodeData.db')
     api_path = config['API'].get('api_path', None)
     flask_path = config['flask'].get('path', '')

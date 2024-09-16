@@ -3,7 +3,8 @@ import sqlite3
 import threading
 import requests
 from utils import log_text_to_file, haversine_distance, format_real_number
-
+import secrets
+import string
 
 from meshtastic import BROADCAST_NUM
 
@@ -24,6 +25,35 @@ def initialize_database(system_config):
         conn = system_config['conn'] 
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS TelemetryData (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp DATETIME DEFAULT (datetime('now','utc')),
+                    first_contact DATETIME DEFAULT (datetime('now','utc')),
+                    sender_node_id TEXT NOT NULL UNIQUE,
+                    to_node_id TEXT,
+                    sender_long_name TEXT,
+                    sender_short_name TEXT,
+                    latitude REAL,
+                    longitude REAL,
+                    temperature REAL,
+                    humidity REAL,
+                    pressure REAL,
+                    battery_level REAL,
+                    voltage REAL,
+                    uptime_seconds REAL,
+                    altitude REAL,
+                    sats_in_view REAL,
+                    snr REAL,
+                    role TEXT,
+                    hardware_model TEXT,
+                    mac_address TEXT,
+                    neighbor_node_id TEXT,
+                    miles_to_base REAL,
+                    mqtt INTEGER DEFAULT 0,
+                    publicKey TEXT,
+                    synced INTEGER 0
+                );
+                ''')
+        c.execute('''CREATE TABLE IF NOT EXISTS chats (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp DATETIME DEFAULT (datetime('now','utc')),
                     first_contact DATETIME DEFAULT (datetime('now','utc')),
@@ -83,7 +113,7 @@ def insert_telemetry_data(
     sender_long_name=None,
     role=None, 
     dst_to_bs=None, 
-    viaMqtt=False, 
+    viaMqtt=0, 
     publicKey=None, 
     set_timestamp=True
     ):
@@ -164,12 +194,12 @@ def insert_telemetry_data(
             if dst_to_bs:
                 conn.execute('''UPDATE TelemetryData SET miles_to_base = ? WHERE sender_node_id = ?''', (dst_to_bs, sender_node_id))
                 logger.debug(f"--- Updated miles_to_base: {dst_to_bs}")
-            if viaMqtt:
+            if viaMqtt == 0:
                 conn.execute('''UPDATE TelemetryData SET mqtt = ? WHERE sender_node_id = ?''', (viaMqtt, sender_node_id))
-                logger.debug(f"--- Updated mqtt: {viaMqtt}")
-            if viaMqtt:
+                system_config['logger'].debug(f"--- Updated mqtt: {viaMqtt}")
+            if publicKey:
                 conn.execute('''UPDATE TelemetryData SET publicKey = ? WHERE sender_node_id = ?''', (publicKey, sender_node_id))
-                logger.debug(f"--- Updated mqtt: {publicKey}")
+                system_config['logger'].debug(f"--- Updated mqtt: {publicKey}")
             if True:
                 conn.execute('''UPDATE TelemetryData SET synced = ? WHERE sender_node_id = ?''', (0, sender_node_id))
                 logger.debug(f"--- Updated synced: False")
@@ -252,7 +282,6 @@ def process_and_insert_telemetry_data(system_config, interface):
         logging.getLogger().setLevel(logging.INFO)
         logger.info("Telemetry data processing complete.")
 
-
 def sync_data_to_server(system_config):
     logger = system_config['logger']
     try:
@@ -318,3 +347,10 @@ def sync_data_to_server(system_config):
     except Exception as e:
         logger.error("An error occurred during data sync: %s", str(e))
         system_config['logger'].info(f"--------------------------------------------------------")
+
+def create_auth_key():
+    characters = string.ascii_letters + string.digits + string.punctuation  # You can customize the character set
+    return ''.join(secrets.choice(characters) for _ in range(256))
+
+    random_string = generate_random_string()
+    print(random_string)    

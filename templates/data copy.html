@@ -6,6 +6,10 @@
     <h2 class="my-4">Telemetry Data Table</h2>
     <div class="d-flex justify-content-between mb-2">
         <div>
+            <label for="telemetryTable_filter">Search:</label>
+            <input type="search" id="telemetryTable_filter" class="form-control form-control-sm" placeholder="" aria-controls="telemetryTable">
+        </div>
+        <div>
             <!-- Button to trigger the modal -->
             <button id="toggleColumns" class="btn btn-primary">Toggle Columns</button>
         </div>
@@ -48,12 +52,10 @@
         <div class="modal-content">
         <span class="close">&times;</span>
         <h2>Select Columns to Display</h2>
-        <hr>
         <form id="columnForm">
             <!-- Dynamically generated checkboxes for columns will go here -->
         </form>
-        <hr>
-        <button id="saveColumns" class="btn btn-primary">Save</button>
+        <button id="saveColumns">Save</button>
         </div>
     </div>
 
@@ -68,13 +70,14 @@
             var telemetryTable = $('#telemetryTable').DataTable({
                 "paging": true,
                 "searching": true,
-                "ordering": true,  // Enable sorting
+                "ordering": true,
                 "autoWidth": false,
                 "responsive": true,
-                "lengthChange": true,  // Allows changing the number of rows shown
-                "pageLength": 25,  // Default number of rows per page
+                "lengthChange": true,
+                "pageLength": 25,
+                "columnDefs": [],  // We will modify column definitions based on user preferences
             });
-
+    
             const columnNames = [
                 "Long Name", "Short Name", "Temperature", "Humidity", "Pressure", "Battery Level",
                 "Voltage", "Satellites in View", "Uptime (Seconds)", "Uptime (Formatted)", 
@@ -90,7 +93,7 @@
                 });
                 localStorage.setItem('columnVisibility', JSON.stringify(selectedColumns));
             }
-
+    
             function loadColumnVisibility() {
                 const savedColumns = JSON.parse(localStorage.getItem('columnVisibility'));
                 if (savedColumns) {
@@ -106,36 +109,22 @@
     
             function createColumnForm() {
                 const columnForm = $("#columnForm");
-                columnForm.addClass('row'); // Adding Bootstrap row class
                 columnNames.forEach((name, index) => {
                     const isVisible = telemetryTable.column(index).visible();
                     columnForm.append(`
-                        <div class="col-md-6 mb-3">  <!-- Using Bootstrap grid for two columns and adding margin-bottom for spacing -->
-                            <label class="form-check-label">
-                                <input type="checkbox" class="form-check-input" ${isVisible ? 'checked' : ''} data-column-index="${index}">
-                                ${name}
-                            </label>
-                        </div>
+                        <label>
+                            <input type="checkbox" ${isVisible ? 'checked' : ''} data-column-index="${index}">
+                            ${name}
+                        </label><br>
                     `);
                 });
             }
-
-
+    
             // Modal functionality
             const modal = document.getElementById("columnModal");
             const btn = document.getElementById("toggleColumns");
             const span = document.getElementsByClassName("close")[0];
     
-            // Save button
-            $("#saveColumns").on("click", function() {
-                saveColumnVisibility();
-                modal.style.display = "none";
-            });
-    
-            // Initial setup
-            createColumnForm();
-            loadColumnVisibility();
-
             btn.onclick = function() {
                 modal.style.display = "block";
             }
@@ -150,92 +139,54 @@
                 }
             }
     
-            function formatValue(value) {
-                // Replace null, undefined, or non-numeric values with 0.00
-                return value === null || value === undefined || value === '---' || value === '' ? '0.00' : value;
-            }
-
-            function formatStr(value) {
-                return value === null || value === undefined || value === '' ? '---' : value;
-            }
-
-            function formatRole(value) {
-                return value === null || value === undefined || value === '---' || value === '' ? 'CLIENT' : value;
-            }
+            // Save button
+            $("#saveColumns").on("click", function() {
+                saveColumnVisibility();
+                modal.style.display = "none";
+            });
     
-            // Function to get the query parameter from URL
-            function getQueryParam(param) {
-                const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get(param) || 'all';  // Default to 'all' if no param is provided
-            }
+            // Initial setup
+            createColumnForm();
+            loadColumnVisibility();
     
+            // Fetch telemetry data
             function fetchTelemetryData() {
                 fetch('{{ flask_path }}/get-telemetry-data')
-                    .then(response => {
-                        if (!response.ok) {
-                            console.error('Network response was not ok:', response.statusText);
-                            return;
-                        }
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(data => {
-                        if (!data) {
-                            console.error('No data received from server.');
-                            return;
-                        }
-    
-                        const closeNodes = data.close_nodes;
-                        const farNodes = data.far_nodes;
-                        const allNodes = closeNodes.concat(farNodes);
-    
-                        const filter = getQueryParam('filter');  // Get the 'filter' query parameter
-                        let filteredNodes = [];
-    
-                        // Filter nodes based on the 'filter' parameter
-                        if (filter === 'local') {
-                            filteredNodes = closeNodes;
-                        } else if (filter === 'global') {
-                            filteredNodes = farNodes;
-                        } else {
-                            filteredNodes = allNodes;  // Default to 'all'
-                        }
-    
-                        telemetryTable.clear(); // Clear existing table data
-    
-                        filteredNodes.forEach(item => {
+                        telemetryTable.clear();
+                        data.forEach(item => {
                             telemetryTable.row.add([
                                 '<a class="nav-link" href="{{ flask_path }}/?node=' + item.sender_node_id + '">' + formatStr(item.sender_long_name) + '</a>',
-                                formatStr(item.sender_short_name),  // Short Name
-                                formatValue(item.temperature),  // Temperature
-                                formatValue(item.humidity),  // Humidity
-                                formatValue(item.pressure),  // Pressure
-                                formatValue(item.battery_level),  // Battery Level
-                                formatValue(item.voltage),  // Voltage
-                                formatValue(item.sats_in_view),  // Satellites in View
-                                formatValue(item.uptime_seconds),  // Uptime (Seconds)
-                                formatStr(item.uptime_string),  // Uptime (Formatted String)
-                                formatValue(item.timestamp),  // Timestamp (new column)
-                                formatValue(item.last_seen),  // Last Seen
-                                formatValue(item.latitude),  // Latitude
-                                formatValue(item.longitude),  // Longitude
-                                formatValue(item.altitude),  // Altitude
-                                formatValue(item.snr),  // Signal-to-Noise Ratio
-                                formatRole(item.role),  // Role (Node role in the network)
-                                formatStr(item.hardware_model),  // Hardware Model
-                                formatStr(item.mac_address),  // MAC Address
-                                formatValue(item.miles_to_base),  // Distance to Base Station (in miles)
-                                formatValue(item.mqtt),  // MQTT flag (1 = enabled, 0 = disabled)
+                                formatStr(item.sender_short_name),
+                                formatValue(item.temperature),
+                                formatValue(item.humidity),
+                                formatValue(item.pressure),
+                                formatValue(item.battery_level),
+                                formatValue(item.voltage),
+                                formatValue(item.sats_in_view),
+                                formatValue(item.uptime_seconds),
+                                formatStr(item.uptime_string),
+                                formatValue(item.timestamp),
+                                formatValue(item.last_seen),
+                                formatValue(item.latitude),
+                                formatValue(item.longitude),
+                                formatValue(item.altitude),
+                                formatValue(item.snr),
+                                formatRole(item.role),
+                                formatStr(item.hardware_model),
+                                formatStr(item.mac_address),
+                                formatValue(item.miles_to_base),
+                                formatValue(item.mqtt),
                             ]).draw(false);
                         });
-                    })
-                    .catch(error => console.error('Error fetching telemetry data:', error));
+                    });
             }
     
             // Initial data load
             fetchTelemetryData();
-    
-            // Update the table every 2 minutes, with sorting enabled
             setInterval(fetchTelemetryData, 120000);
         });
     </script>
+    
 {% endblock %}

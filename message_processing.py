@@ -35,8 +35,8 @@ def on_receive(system_config, packet, interface):
         snr = format_real_number(packet.get('rxSnr', None))
         hardware_model = user_data.get('hwModel', None)
         mac_address = user_data.get('macaddr', None)
-        role = user_data.get('role', 'CLIENT')
-        viaMqtt = packet.get('viaMqtt', False)
+        role = user_data.get('role', None)
+        viaMqtt = packet.get('viaMqtt', 0)
         publicKey = packet.get('publicKey', None)
 
         insert_telemetry_data(system_config, sender_node_id, timestamp=rx_time, sender_short_name=sender_short_name, to_node_id=to_node_id, temperature=temperature, humidity=humidity, pressure=pressure, battery_level=battery, voltage=voltage, uptime_seconds=uptime, latitude=latitude, longitude=longitude, altitude=altitude, sats_in_view=sats_in_view, neighbor_node_id=None, snr=snr, hardware_model=hardware_model, mac_address=mac_address, sender_long_name=sender_long_name, role=role, dst_to_bs=None, viaMqtt=viaMqtt, publicKey=publicKey)

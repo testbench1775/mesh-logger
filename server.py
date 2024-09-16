@@ -38,7 +38,7 @@ def main():
     system_config['logger'] = logging.getLogger(__name__)
 
     log_level = getattr(logging, system_config['log_level'].upper(), logging.INFO)  # Convert string to logging level
-    system_config['logger'].setLevel(log_level)
+    system_config['logger'].setLevel(logging.DEBUG)
 
     merge_config(system_config, args)
 
@@ -61,9 +61,8 @@ def main():
 
     display_banner()
 
-    system_config['logger'].info(f"Testbench Mesh Logger is running on {system_config['interface_type']} interface...\n")
-
-    system_config['logger'].info(interface.showNodes()) # <-- USAGE self = interface
+    system_config['logger'].info(f"Testbench Mesh Logger is running on {system_config['interface_type']} interface...")
+    system_config['logger'].info(f"Connected to {system_config['hostname']}\n")
 
 
     def receive_packet(packet, interface):
