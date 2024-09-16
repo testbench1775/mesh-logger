@@ -25,7 +25,7 @@ def index():
 
 # Route to serve the HTML template
 @app.route('/data')
-def sidebar():
+def dataTable():
     return render_template('data.html')  # Ensure index.html is in the 'templates' folder
 
 # Route to provide telemetry data as JSON
