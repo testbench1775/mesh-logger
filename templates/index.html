@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Telemetry Data Table{% endblock %}
+{% block title %}Node Data{% endblock %}
 
 {% block content %}
     <!-- Adjusting layout for sidebar and map -->
     <div class="row">
         <div id="sidebar" class="col-md-3 bg-body-tertiary p-3">
             <a href="/" class="d-flex align-items-center flex-shrink-0 p-3 link-body-emphasis text-decoration-none border-bottom">
-                <span class="fs-5 fw-semibold">Boise Meshtastic Node List</span>
+                <span class="fs-5 fw-semibold">Node List</span>
             </a>
             <div class="list-group list-group-flush border-bottom scrollarea" style="height: 400px;" id="node-list">
                 <!-- List items dynamically generated from telemetry data -->
