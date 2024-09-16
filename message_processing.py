@@ -35,7 +35,7 @@ def on_receive(system_config, packet, interface):
         snr = format_real_number(packet.get('rxSnr', None))
         hardware_model = user_data.get('hwModel', None)
         mac_address = user_data.get('macaddr', None)
-        role = user_data.get('role', None)
+        role = user_data.get('role', 'CLIENT')
         viaMqtt = packet.get('viaMqtt', False)
         publicKey = packet.get('publicKey', None)
 

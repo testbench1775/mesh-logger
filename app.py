@@ -21,12 +21,12 @@ system_config = initialize_config(config_file)
 # Route to serve the HTML template
 @app.route('/')
 def index():
-    return render_template('index.html')  # Ensure index.html is in the 'templates' folder
+    return render_template('index.html', flask_path=system_config['flask_path'])  # Ensure index.html is in the 'templates' folder
 
 # Route to serve the HTML template
 @app.route('/data')
 def dataTable():
-    return render_template('data.html')  # Ensure index.html is in the 'templates' folder
+    return render_template('data.html', flask_path=system_config['flask_path'])  # Ensure index.html is in the 'templates' folder
 
 # Route to provide telemetry data as JSON
 @app.route('/get-telemetry-data', methods=['GET'])

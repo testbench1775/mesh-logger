@@ -3,9 +3,6 @@
 {% block title %}Telemetry Data Table{% endblock %}
 
 {% block content %}
-<body>
-
-    <div class="container">
         <h2 class="my-4">Telemetry Data Table</h2>
         <table id="telemetryTable" class="table table-striped" style="width:100%">
             <thead>
@@ -39,7 +36,6 @@
                 <!-- Dynamic rows will be inserted here -->
             </tbody>
         </table>
-    </div>
 
     <!-- Correct order of scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> <!-- jQuery first -->
@@ -79,7 +75,7 @@
             }
     
             function fetchTelemetryData() {
-                fetch('/get-telemetry-data')
+                fetch('{{ flask_path }}/get-telemetry-data')
                     .then(response => {
                         if (!response.ok) {
                             console.error('Network response was not ok:', response.statusText);
@@ -113,7 +109,7 @@
     
                         filteredNodes.forEach(item => {
                             telemetryTable.row.add([
-                                formatStr(item.sender_long_name),  // Node Name
+                                '<a class="nav-link" href="{{ flask_path }}/?node=' + item.sender_node_id + '">' + formatStr(item.sender_long_name) + '</a>',
                                 formatStr(item.sender_short_name),  // Short Name
                                 formatValue(item.temperature),  // Temperature
                                 formatValue(item.humidity),  // Humidity
@@ -147,5 +143,4 @@
             setInterval(fetchTelemetryData, 120000);
         });
     </script>
-    <style>
 {% endblock %}
