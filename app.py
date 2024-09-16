@@ -27,7 +27,7 @@ def index():
 @app.route('/data')
 def dataTable():
     return render_template('data.html', flask_path=system_config['flask_path'])  # Ensure index.html is in the 'templates' folder
-
+ 
 # Route to provide telemetry data as JSON
 @app.route('/get-telemetry-data', methods=['GET'])
 def get_telemetry_data():
