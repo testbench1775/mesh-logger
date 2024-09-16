@@ -27,7 +27,7 @@ def sync_database_periodically(system_config, interval=60):
         time.sleep(interval)
         system_config['logger'].info("Syncing database to server...")
         sync_data_to_server(system_config)
-        system_config['logger'].info("Database synced successfully.")
+        system_config['logger'].info("Database synced successfully.") 
 
 def main():
     args = init_cli_parser()

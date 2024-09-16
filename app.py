@@ -16,7 +16,7 @@ config_file = None
 if args.config is not None:
     config_file = args.config
 
-system_config = initialize_config(config_file)
+system_config = initialize_config(config_file) 
 
 # Route to serve the HTML template
 @app.route('/')

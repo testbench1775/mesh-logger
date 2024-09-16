@@ -19,7 +19,7 @@ def on_receive(system_config, packet, interface):
 
         telemetry_data = decoded_packet.get('telemetry', {})
         temperature = format_real_number(telemetry_data.get('environmentMetrics', {}).get('temperature', None))
-        humidity = format_real_number(telemetry_data.get('environmentMetrics', {}).get('relativeHumidity', None))
+        humidity = format_real_number(telemetry_data.get('environmentMetrics', {}).get('relativeHumidity', None)) 
         pressure = format_real_number(telemetry_data.get('environmentMetrics', {}).get('barometricPressure', None))
         battery = format_real_number(telemetry_data.get('deviceMetrics', {}).get('batteryLevel', None))
         voltage = format_real_number(telemetry_data.get('deviceMetrics', {}).get('voltage', None))

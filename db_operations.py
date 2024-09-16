@@ -21,7 +21,7 @@ def get_db_connection(db_file='nodeData.db'):
 def initialize_database(system_config):
     logger = system_config['logger']
     try:
-        conn = system_config['conn']
+        conn = system_config['conn'] 
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS TelemetryData (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

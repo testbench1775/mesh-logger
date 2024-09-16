@@ -17,7 +17,7 @@ def init_cli_parser() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Meshtastic Logging system")
     
     parser.add_argument(
-        "--config", "-c",
+        "--config", "-c", 
         action="store",
         help="System configuration file (None)",
         default=None)
