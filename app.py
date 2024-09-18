@@ -44,7 +44,7 @@ def dataTable():
  
 # Route to provide telemetry data as JSON
 @app.route('/get-telemetry-data', methods=['GET'])
-@limit_referrer(["http://testbench.cc/"])
+@limit_referrer(["https://testbench.cc/meshlogger/"])
 def get_telemetry_data():
     conn = sqlite3.connect(db_path)  # Replace with your actual database path
     cursor = conn.cursor()
@@ -184,7 +184,6 @@ def get_telemetry_data():
 
 
 @app.route('/sync', methods=['POST'])
-@limit_referrer(["http://testbench.cc/", "http://testbench.cc/data?filter=local", "http://127.0.0.1:5000/"])
 def sync_db():
     data = request.get_json()
 
