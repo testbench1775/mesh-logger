@@ -3,9 +3,9 @@ import logging
 import threading
 from pubsub import pub
 from utils import display_banner
-from message_processing import on_receive
+from event_processing import onReceive
 from config_init import initialize_config, get_interface, init_cli_parser, merge_config
-from db_operations import initialize_database, process_and_insert_telemetry_data, get_db_connection, sync_data_to_server
+from db_operations import initialize_database, process_and_insert_telemetry_data, get_db_connection, sync_data_to_server, sync_database_periodically
 import signal
 
 
@@ -18,16 +18,6 @@ logging.basicConfig(
     format='%(asctime)s: %(message)s',
     datefmt='%H:%M:%S'
 )
-
-def sync_database_periodically(system_config, interval=60):
-    """
-    This function will run in a separate thread to sync the database to the server periodically.
-    """
-    while True:
-        time.sleep(interval)
-        system_config['logger'].info("Syncing database to server...")
-        sync_data_to_server(system_config)
-        system_config['logger'].info("Database synced successfully.") 
 
 def main():
     args = init_cli_parser()
@@ -65,14 +55,14 @@ def main():
     system_config['logger'].info(f"Connected to {system_config['hostname']}\n")
 
 
-    def receive_packet(packet, interface):
-        on_receive(system_config, packet, interface)
+    def receive_packet_(packet, interface):
+        onReceive(system_config, packet, interface)
 
-    def onConnection(interface, topic=pub.AUTO_TOPIC):  # supposed to be called when connecting ¯\_(ツ)_/¯
+    def onConnection_():  # supposed to be called when connecting ¯\_(ツ)_/¯
         system_config['logger'].info(f"Connected to the radio!")
 
-    def onDisconnect(interface, topic=pub.AUTO_TOPIC):
-        system_config['logger'].info(f"Connection lost!")
+    def onDisconnect_(interface):
+        onDisconnect(system_config, interface)
 
     # - meshtastic.connection.established - published once we've successfully connected to the radio and downloaded the node DB
     # - meshtastic.connection.lost - published once we've lost our link to the radio
@@ -84,9 +74,12 @@ def main():
     # - meshtastic.node.updated(node = NodeInfo) - published when a node in the DB changes (appears, location changed, username changed, etc...)
     # - meshtastic.log.line(line) - a raw unparsed log line from the radio
 
-    pub.subscribe(receive_packet, "meshtastic.receive")
-    pub.subscribe(onConnection, "meshtastic.connection.established")
-    pub.subscribe(onDisconnect, "meshtastic.connection.lost")
+    pub.subscribe(receive_packet_, "meshtastic.receive")
+    pub.subscribe(onConnection_, "meshtastic.connection.established")
+
+     # Conn 2 for local testing
+    local_testing_conn = get_db_connection(db_file='nodeData copy.db')
+    system_config['conn'] = local_testing_conn
 
     # Start the database sync in a separate thread
     sync_thread = threading.Thread(target=sync_database_periodically, args=(system_config, 300))  # sync every 5 minutes

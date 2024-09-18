@@ -1,8 +1,8 @@
 import logging
 import time
 import math
-import psutil
-import os
+import secrets
+import string
 
 def send_message(message, destination, interface):
     max_payload_size = 200
@@ -116,3 +116,10 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     # Distance in miles
     distance = R * c
     return distance
+
+def create_auth_key():
+    characters = string.ascii_letters + string.digits + string.punctuation  # You can customize the character set
+    return ''.join(secrets.choice(characters) for _ in range(256))
+
+    random_string = generate_random_string()
+    print(random_string)    

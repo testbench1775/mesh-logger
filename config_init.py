@@ -141,8 +141,9 @@ def initialize_config(config_file: str = None) -> dict[str, Any]:
 
     # Get the values from the config file ['name of section'] ('name of key', 'default value')
     interface_type = config['interface']['type']
-    hostname = config['interface'].get('hostname', None)
+    hostname = config['interface'].get('hostname', 'meshtastic.local')
     port = config['interface'].get('port', None)
+    max_retries = int(config['interface'].get('max_retries', 0))
     timezone = config['timezone'].get('timezone', 'UTC')
     log_level = config['logging'].get('log_level', 'INFO').upper()
     db_file = config['database'].get('file', 'nodeData.db')
@@ -161,6 +162,7 @@ def initialize_config(config_file: str = None) -> dict[str, Any]:
         'interface_type': interface_type,
         'hostname': hostname,
         'port': port,
+        'max_retries': max_retries,
         'timezone': timezone,
         'log_level': log_level,
         'conn': None,

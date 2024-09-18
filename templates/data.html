@@ -24,13 +24,15 @@
                 <th>Satellites in View</th>
                 <th>Uptime (s)</th>
                 <th>Uptime (Formatted)</th>
-                <th>Timestamp</th>
+                <th>Last Update</th>
                 <th>Last Seen</th>
                 <th>Latitude</th>
                 <th>Longitude</th>
                 <th>Altitude (m)</th>
                 <th>SNR (Signal-to-Noise Ratio)</th>
                 <th>Role</th>
+                <th>Hex ID</th>
+                <th>First Contact</th>
                 <th>Hardware Model</th>
                 <th>MAC Address</th>
                 <th>Distance (miles)</th>
@@ -78,8 +80,8 @@
             const columnNames = [
                 "Long Name", "Short Name", "Temperature", "Humidity", "Pressure", "Battery Level",
                 "Voltage", "Satellites in View", "Uptime (Seconds)", "Uptime (Formatted)", 
-                "Timestamp", "Last Seen", "Latitude", "Longitude", "Altitude", 
-                "SNR", "Role", "Hardware Model", "MAC Address", "Miles to Base", "MQTT Flag"
+                "Last Update", "Last Seen", "Latitude", "Longitude", "Altitude", 
+                "SNR", "Role", "Hex ID", "First Contact", "Hardware Model", "MAC Address", "Miles to Base", "MQTT Flag"
             ];
     
             function saveColumnVisibility() {
@@ -221,6 +223,8 @@
                                 formatValue(item.altitude),  // Altitude
                                 formatValue(item.snr),  // Signal-to-Noise Ratio
                                 formatRole(item.role),  // Role (Node role in the network)
+                                formatValue(item.sender_node_id),
+                                formatValue(item.first_contact),
                                 formatStr(item.hardware_model),  // Hardware Model
                                 formatStr(item.mac_address),  // MAC Address
                                 formatValue(item.miles_to_base),  // Distance to Base Station (in miles)

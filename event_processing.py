@@ -1,9 +1,10 @@
-from utils import get_node_names, format_real_number
+from utils import get_node_names, format_real_number, log_text_to_file
 from db_operations import insert_telemetry_data
 from datetime import datetime, timezone
 import traceback
+import time
 
-def on_receive(system_config, packet, interface):
+def onReceive(system_config, packet, interface):
     logger = system_config['logger']
     decoded_packet = packet.get('decoded', {})
 
@@ -47,7 +48,7 @@ def on_receive(system_config, packet, interface):
         # Handle TEXT_MESSAGE_APP
         if portnum == 'TEXT_MESSAGE_APP':
             try:
-                # log_text_to_file(packet, './logs/TEXT_MESSAGE_APP.txt')
+                log_text_to_file(packet, './logs/TEXT_MESSAGE_APP.txt')
                 system_config['logger'].info(f"{sender_long_name} ({sender_short_name}) sent a message to {to_long_name} ({to_short_name})")
                 system_config['logger'].info(f"--- Message: \n\n{message}\n")
                 system_config['logger'].info(f"--------------------------------------------------------")
@@ -114,3 +115,32 @@ def on_receive(system_config, packet, interface):
             except Exception as e:
                 system_config['logger'].error(f"Error processing NODEINFO_APP: {e}")
                 system_config['logger'].debug(traceback.format_exc())
+
+
+def onDisconnect(system_config, interface):
+    system_config['logger'].info(f"Connection lost! Attempting to reconnect...")
+
+    max_retries = int(system_config['max_retries'])
+    retry_count = 0
+    reconnected = False
+
+    while retry_count < max_retries and not reconnected:
+        try:
+            system_config['logger'].info(f"Reconnect attempt {retry_count + 1} of {max_retries}...")
+            interface.connect()  # Try to reconnect
+            time.sleep(2)  # Give it a moment before checking
+
+            if interface.is_connected():  # Assuming there's a method like this
+                system_config['logger'].info("Reconnection successful!")
+                reconnected = True
+            else:
+                retry_count += 1
+                time.sleep(5)  # Wait 5 seconds before trying again
+        except Exception as e:
+            system_config['logger'].error(f"Reconnect attempt failed: {e}")
+            retry_count += 1
+            time.sleep(5)  # Wait before next attempt
+
+    if not reconnected:
+        system_config['logger'].error("Max reconnection attempts reached. Closing connection.")
+        interface.close()

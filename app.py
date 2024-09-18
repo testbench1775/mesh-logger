@@ -1,6 +1,6 @@
 import sqlite3
 from datetime import datetime, timedelta, timezone
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, abort
 from config_init import initialize_config
 import argparse
 
@@ -18,6 +18,20 @@ if args.config is not None:
 
 system_config = initialize_config(config_file) 
 
+# decorator to limit access to the data routs
+def limit_referrer(allowed_domains):
+    def decorator(f):
+        def wrapped_function(*args, **kwargs):
+            print(f"{request.remote_addr}: {request.referrer}")
+            if request.referrer:
+                # Check if referrer starts with any of the allowed domains
+                if not any(request.referrer.startswith(domain) for domain in allowed_domains) and request.remote_addr not in ['127.0.0.1', 'localhost', '::1']:
+                    abort(403)  # Forbidden
+            return f(*args, **kwargs)
+        wrapped_function.__name__ = f.__name__  # Keep original function name
+        return wrapped_function
+    return decorator
+
 # Route to serve the HTML template
 @app.route('/')
 def index():
@@ -30,6 +44,7 @@ def dataTable():
  
 # Route to provide telemetry data as JSON
 @app.route('/get-telemetry-data', methods=['GET'])
+@limit_referrer(["http://testbench.cc/"])
 def get_telemetry_data():
     conn = sqlite3.connect(db_path)  # Replace with your actual database path
     cursor = conn.cursor()
@@ -54,6 +69,7 @@ def get_telemetry_data():
             (SELECT hardware_model FROM TelemetryData WHERE hardware_model IS NOT NULL AND sender_node_id = td.sender_node_id ORDER BY id DESC LIMIT 1) AS hardware_model,
             (SELECT sender_long_name FROM TelemetryData WHERE sender_long_name IS NOT NULL AND sender_node_id = td.sender_node_id ORDER BY id DESC LIMIT 1) AS sender_long_name,
             (SELECT role FROM TelemetryData WHERE role IS NOT NULL AND sender_node_id = td.sender_node_id ORDER BY id DESC LIMIT 1) AS role,
+            (SELECT first_contact FROM TelemetryData WHERE first_contact IS NOT NULL AND sender_node_id = td.sender_node_id ORDER BY id DESC LIMIT 1) AS first_contact,
             (SELECT miles_to_base FROM TelemetryData WHERE miles_to_base IS NOT NULL AND sender_node_id = td.sender_node_id ORDER BY id DESC LIMIT 1) AS miles_to_base,
             (SELECT mqtt FROM TelemetryData WHERE mqtt IS NOT NULL AND sender_node_id = td.sender_node_id ORDER BY id DESC LIMIT 1) AS mqtt
         FROM TelemetryData td
@@ -127,8 +143,9 @@ def get_telemetry_data():
             "hardware_model": row[14],
             "sender_long_name": row[15],
             "role": row[16],
-            "miles_to_base": row[17],
-            "mqtt": row[18],
+            "first_contact": row[17],
+            "miles_to_base": row[18],
+            "mqtt": row[19],
             "last_seen": last_seen,
             "uptime_string": uptime,
             "flask_path": system_config['flask_path']
@@ -167,6 +184,7 @@ def get_telemetry_data():
 
 
 @app.route('/sync', methods=['POST'])
+@limit_referrer(["http://testbench.cc/", "http://testbench.cc/data?filter=local", "http://127.0.0.1:5000/"])
 def sync_db():
     data = request.get_json()
 

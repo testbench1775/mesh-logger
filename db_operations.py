@@ -3,8 +3,7 @@ import sqlite3
 import threading
 import requests
 from utils import log_text_to_file, haversine_distance, format_real_number
-import secrets
-import string
+import time
 
 from meshtastic import BROADCAST_NUM
 
@@ -348,9 +347,13 @@ def sync_data_to_server(system_config):
         logger.error("An error occurred during data sync: %s", str(e))
         system_config['logger'].info(f"--------------------------------------------------------")
 
-def create_auth_key():
-    characters = string.ascii_letters + string.digits + string.punctuation  # You can customize the character set
-    return ''.join(secrets.choice(characters) for _ in range(256))
 
-    random_string = generate_random_string()
-    print(random_string)    
+def sync_database_periodically(system_config, interval=60):
+    """
+    This function will run in a separate thread to sync the database to the server periodically.
+    """
+    while True:
+        time.sleep(interval)
+        system_config['logger'].info("Syncing database to server...")
+        sync_data_to_server(system_config)
+        system_config['logger'].info("Database synced successfully.") 
