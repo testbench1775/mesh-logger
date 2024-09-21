@@ -1,5 +1,5 @@
 from utils import get_node_names, format_real_number, log_text_to_file
-from db_operations import insert_telemetry_data
+from db_operations import upsert_node_data
 from datetime import datetime, timezone
 import traceback
 import time
@@ -40,7 +40,7 @@ def onReceive(system_config, packet, interface):
         viaMqtt = packet.get('viaMqtt', 0)
         publicKey = packet.get('publicKey', None)
 
-        insert_telemetry_data(system_config, sender_node_id, timestamp=rx_time, sender_short_name=sender_short_name, to_node_id=to_node_id, temperature=temperature, humidity=humidity, pressure=pressure, battery_level=battery, voltage=voltage, uptime_seconds=uptime, latitude=latitude, longitude=longitude, altitude=altitude, sats_in_view=sats_in_view, neighbor_node_id=None, snr=snr, hardware_model=hardware_model, mac_address=mac_address, sender_long_name=sender_long_name, role=role, dst_to_bs=None, viaMqtt=viaMqtt, publicKey=publicKey)
+        upsert_node_data(system_config, sender_node_id, timestamp=rx_time, sender_short_name=sender_short_name, to_node_id=to_node_id, temperature=temperature, humidity=humidity, pressure=pressure, battery_level=battery, voltage=voltage, uptime_seconds=uptime, latitude=latitude, longitude=longitude, altitude=altitude, sats_in_view=sats_in_view, neighbor_node_id=None, snr=snr, hardware_model=hardware_model, mac_address=mac_address, sender_long_name=sender_long_name, role=role, dst_to_bs=None, viaMqtt=viaMqtt, publicKey=publicKey)
 
         system_config['logger'].debug(f"rxPacket: {sender_short_name} to {to_short_name} at {rx_time}")
         system_config['logger'].info(f"-------------------------------------------------------- {portnum} ")
@@ -61,7 +61,7 @@ def onReceive(system_config, packet, interface):
         # Handle TELEMETRY_APP
         elif portnum == 'TELEMETRY_APP':
             try:
-                # log_text_to_file(packet, './logs/TELEMETRY_APP.txt')
+                log_text_to_file(packet, './logs/TELEMETRY_APP.txt')
                 # insert_telemetry_data(system_config, sender_node_id=sender_node_id, timestamp=rx_time, to_node_id=to_node_id, sender_short_name=sender_short_name, sender_long_name=sender_long_name, temperature=temperature, humidity=humidity, pressure=pressure, battery_level=battery, voltage=voltage, uptime_seconds=uptime, viaMqtt=viaMqtt)
                 pass
             except Exception as e:
@@ -117,6 +117,7 @@ def onReceive(system_config, packet, interface):
                 system_config['logger'].debug(traceback.format_exc())
 
 
+# Not working
 def onDisconnect(system_config, interface):
     system_config['logger'].info(f"Connection lost! Attempting to reconnect...")
 

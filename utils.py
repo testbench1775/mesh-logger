@@ -3,6 +3,7 @@ import time
 import math
 import secrets
 import string
+import meshtastic.tcp_interface
 
 def send_message(message, destination, interface):
     max_payload_size = 200
@@ -123,3 +124,26 @@ def create_auth_key():
 
     random_string = generate_random_string()
     print(random_string)    
+
+def hex_to_decimal(value):
+    if value.startswith('!'):
+        # Remove '!' or other non-hexadecimal characters if present
+        hex_value = value.lstrip('!')
+        decimal_value = int(hex_value, 16)
+    else:
+        decimal_value = int(value)    
+    
+    return decimal_value
+
+def celsius_to_fahrenheit(celsius):
+    if not isinstance(celsius, (int, float)):
+        return None
+    return round((celsius * 9/5) + 32, 2)
+
+def traceroute(interface, logger, dest, hop_limit=10):
+    try:
+        decimal_id = hex_to_decimal(dest)
+        interface.sendTraceRoute(dest, hop_limit)
+    except meshtastic.mesh_interface.MeshInterface.MeshInterfaceError as mie:
+        logger.info(f"Timed out waiting for traceroute: {mie}") 
+

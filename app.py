@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, jsonify, request, abort
 from config_init import initialize_config
 import argparse
+from utils import celsius_to_fahrenheit
 
 app = Flask(__name__)
 application = app  # For Elastic Beanstalk deployment
@@ -129,7 +130,7 @@ def get_telemetry_data():
             "sender_node_id": row[0],
             "sender_short_name": row[1],  # Check if this value exists in your DB
             "timestamp": row[2],
-            "temperature": row[3],
+            "temperature": celsius_to_fahrenheit(row[3]),
             "humidity": row[4],
             "pressure": row[5],
             "battery_level": row[6],
@@ -181,7 +182,6 @@ def get_telemetry_data():
 
     conn.close()
     return jsonify({"close_nodes": close_nodes, "far_nodes": far_nodes})
-
 
 @app.route('/sync', methods=['POST'])
 def sync_db():

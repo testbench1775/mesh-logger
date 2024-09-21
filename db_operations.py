@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 import threading
+import traceback
 import requests
 from utils import log_text_to_file, haversine_distance, format_real_number
 import time
@@ -49,15 +50,15 @@ def initialize_database(system_config):
                     miles_to_base REAL,
                     mqtt INTEGER DEFAULT 0,
                     publicKey TEXT,
+                    updated	INTEGER DEFAULT 0,
+                    trend INTEGER DEFAULT 0,
                     synced INTEGER 0
                 );
                 ''')
-        c.execute('''CREATE TABLE IF NOT EXISTS chats (
+        c.execute('''CREATE TABLE IF NOT EXISTS trendData (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp DATETIME DEFAULT (datetime('now','utc')),
-                    first_contact DATETIME DEFAULT (datetime('now','utc')),
-                    sender_node_id TEXT NOT NULL UNIQUE,
-                    to_node_id TEXT,
+                    timestamp DATETIME NOT NULL DEFAULT (datetime('now','utc')),
+                    sender_node_id TEXT NOT NULL,
                     sender_long_name TEXT,
                     sender_short_name TEXT,
                     latitude REAL,
@@ -71,25 +72,20 @@ def initialize_database(system_config):
                     altitude REAL,
                     sats_in_view REAL,
                     snr REAL,
-                    role TEXT,
-                    hardware_model TEXT,
-                    mac_address TEXT,
-                    neighbor_node_id TEXT,
-                    miles_to_base REAL,
-                    mqtt INTEGER DEFAULT 0,
-                    publicKey TEXT,
-                    synced INTEGER 0
+                    synced INTEGER DEFAULT 0
                 );
                 ''')
 
         conn.commit()
 
         logger.info("Database initialized.")
+
     except sqlite3.Error as e:
         logger.error(f"Error initializing database: {e}")
+        logger.error(traceback.format_exc())  # Log the full traceback for debugging
 
 
-def insert_telemetry_data(
+def upsert_node_data(
     system_config, 
     sender_node_id, 
     timestamp=None, 
@@ -114,6 +110,8 @@ def insert_telemetry_data(
     dst_to_bs=None, 
     viaMqtt=0, 
     publicKey=None, 
+    updated=1,
+    trend=None,
     set_timestamp=True
     ):
     
@@ -198,7 +196,13 @@ def insert_telemetry_data(
                 system_config['logger'].debug(f"--- Updated mqtt: {viaMqtt}")
             if publicKey:
                 conn.execute('''UPDATE TelemetryData SET publicKey = ? WHERE sender_node_id = ?''', (publicKey, sender_node_id))
-                system_config['logger'].debug(f"--- Updated mqtt: {publicKey}")
+                system_config['logger'].debug(f"--- Updated publicKey: {publicKey}")
+            if updated:
+                conn.execute('''UPDATE TelemetryData SET updated = ? WHERE sender_node_id = ?''', (updated, sender_node_id))
+                system_config['logger'].debug(f"--- Updated updated: {updated}")
+            if trend:
+                conn.execute('''UPDATE TelemetryData SET trend = ? WHERE sender_node_id = ?''', (trend, sender_node_id))
+                system_config['logger'].debug(f"--- Updated trend: {trend}")
             if True:
                 conn.execute('''UPDATE TelemetryData SET synced = ? WHERE sender_node_id = ?''', (0, sender_node_id))
                 logger.debug(f"--- Updated synced: False")
@@ -216,6 +220,52 @@ def insert_telemetry_data(
 
     except sqlite3.Error as e:
         logging.error(f"Error inserting or updating telemetry data: {e}")
+
+def add_trend_data(system_config):
+    
+    logger = system_config['logger']
+
+    try:
+        conn = system_config['conn']
+
+        # Ensure the connection is open
+        if conn is None or conn.cursor() is None:
+            logger.error("Cannot operate on a closed database.")
+            return
+        
+        with conn:
+            # Insert the data into trendData
+            conn.execute('''
+                INSERT INTO trendData (timestamp, sender_node_id, sender_long_name, sender_short_name,
+                                    latitude, longitude, temperature, humidity, pressure, battery_level, voltage,
+                                    uptime_seconds, altitude, sats_in_view, snr)
+                SELECT timestamp, sender_node_id, sender_long_name, sender_short_name,
+                    latitude, longitude, temperature, humidity, pressure, battery_level, voltage,
+                    uptime_seconds, altitude, sats_in_view, snr
+                FROM TelemetryData
+                WHERE trend = 1
+                AND updated = 1
+                AND latitude IS NOT NULL
+                AND longitude IS NOT NULL;
+            ''')
+
+            # Set the 'updated' column to 0 after inserting the data
+            conn.execute('''
+                UPDATE TelemetryData
+                SET updated = 0
+                WHERE trend = 1
+                AND updated = 1
+                AND latitude IS NOT NULL
+                AND longitude IS NOT NULL;
+            ''')
+
+            logger.info("Trend data added and 'updated' field reset to 0.")
+            logger.info("--------------------------------------------------------")
+
+    except sqlite3.Error as e:
+        logger.error(f"Error adding trend data: {e}")
+
+
 
 def process_and_insert_telemetry_data(system_config, interface):
     logger = system_config['logger']
@@ -251,7 +301,7 @@ def process_and_insert_telemetry_data(system_config, interface):
             publicKey = user_data.get('publicKey', None)
             logger.debug(f"Public key for node {sender_node_id}: {publicKey}")
             
-            insert_telemetry_data(
+            upsert_node_data(
                 conn,
                 sender_node_id=sender_node_id,
                 sender_short_name=user_data.get('shortName'),
@@ -357,3 +407,13 @@ def sync_database_periodically(system_config, interval=60):
         system_config['logger'].info("Syncing database to server...")
         sync_data_to_server(system_config)
         system_config['logger'].info("Database synced successfully.") 
+
+def sync_trend_periodically(system_config, interval=60):
+    """
+    This function will run in a separate thread to collect trend data.
+    """
+    while True:
+        time.sleep(interval)
+        system_config['logger'].info("Appending trend data...")
+        add_trend_data(system_config)
+        system_config['logger'].info("Append successfully.") 

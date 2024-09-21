@@ -7,7 +7,7 @@
     <div class="row">
         <div id="sidebar" class="col-md-3 bg-body-tertiary p-3">
             <a href="/" class="d-flex align-items-center flex-shrink-0 p-3 link-body-emphasis text-decoration-none border-bottom">
-                <span class="fs-5 fw-semibold">Node List</span>
+                <span class="fs-5 fw-semibold">Captured Nodes</span>
             </a>
             <div class="list-group list-group-flush border-bottom scrollarea" style="height: 400px;" id="node-list">
                 <!-- List items dynamically generated from telemetry data -->
@@ -68,7 +68,7 @@
                 </tr>
                 <tr>
                     <td style="text-align: right;"><strong>Temperature:</strong></td>
-                    <td colspan="2" style="text-align: center;">${item.temperature || 'N/A'} C</td>
+                    <td colspan="2" style="text-align: center;">${item.temperature || 'N/A'} °F</td>
                 </tr>
                 <tr>
                     <td style="text-align: right;"><strong>Humidity:</strong></td>
@@ -129,7 +129,7 @@
                         <small>${(item.miles_to_base || 0.00).toFixed(1)} miles</small>
                     </div>
                     <div class="small d-flex w-100 align-items-center justify-content-between">
-                        ${item.temperature ? `${item.temperature} C` : ''} 
+                        ${item.temperature ? `${item.temperature} °F` : ''} 
                         ${item.humidity ? ` | ${item.humidity} %` : ''}
                         <small>${item.last_seen}</small>
                     </div>

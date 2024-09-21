@@ -57,7 +57,10 @@ def execute_function(choice, functions):
         elif func_name == "Send Trace Route":
             dest = hex_to_decimal(input("Enter destination ID: "))
             hop_limit = int(input("Enter hop limit: "))
-            func(dest, hop_limit)
+            try:
+                func(dest, hop_limit)
+            except meshtastic.mesh_interface.MeshInterface.MeshInterfaceError as mie:
+                logger.info(f"Timed out waiting for traceroute: {mie}")
         elif func_name == "Send Telemetry":
             func()
         elif func_name == "Request Node Config":

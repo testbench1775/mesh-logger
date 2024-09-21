@@ -5,7 +5,7 @@ from pubsub import pub
 from utils import display_banner
 from event_processing import onReceive
 from config_init import initialize_config, get_interface, init_cli_parser, merge_config
-from db_operations import initialize_database, process_and_insert_telemetry_data, get_db_connection, sync_data_to_server, sync_database_periodically
+from db_operations import initialize_database, process_and_insert_telemetry_data, get_db_connection, sync_data_to_server, sync_database_periodically, sync_trend_periodically
 import signal
 
 
@@ -85,6 +85,11 @@ def main():
     sync_thread = threading.Thread(target=sync_database_periodically, args=(system_config, 300))  # sync every 5 minutes
     sync_thread.daemon = True
     sync_thread.start()
+
+    # Start the database trending in a separate thread
+    trend_thread = threading.Thread(target=sync_trend_periodically, args=(system_config, 60))  # sync every 1 minutes
+    trend_thread.daemon = True
+    trend_thread.start()
 
     try:
         while True:
