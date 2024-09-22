@@ -61,25 +61,8 @@ def main():
     def onConnection_():  # supposed to be called when connecting ¯\_(ツ)_/¯
         system_config['logger'].info(f"Connected to the radio!")
 
-    def onDisconnect_(interface):
-        onDisconnect(system_config, interface)
-
-    # - meshtastic.connection.established - published once we've successfully connected to the radio and downloaded the node DB
-    # - meshtastic.connection.lost - published once we've lost our link to the radio
-    # - meshtastic.receive.text(packet) - delivers a received packet as a dictionary, if you only care about a particular
-    # type of packet, you should subscribe to the full topic name.  If you want to see all packets, simply subscribe to "meshtastic.receive".
-    # - meshtastic.receive.position(packet)
-    # - meshtastic.receive.user(packet)
-    # - meshtastic.receive.data.portnum(packet) (where portnum is an integer or well known PortNum enum)
-    # - meshtastic.node.updated(node = NodeInfo) - published when a node in the DB changes (appears, location changed, username changed, etc...)
-    # - meshtastic.log.line(line) - a raw unparsed log line from the radio
-
     pub.subscribe(receive_packet_, "meshtastic.receive")
     pub.subscribe(onConnection_, "meshtastic.connection.established")
-
-     # Conn 2 for local testing
-    local_testing_conn = get_db_connection(db_file='nodeData copy.db')
-    system_config['conn'] = local_testing_conn
 
     # Start the database sync in a separate thread
     sync_thread = threading.Thread(target=sync_database_periodically, args=(system_config, 300))  # sync every 5 minutes

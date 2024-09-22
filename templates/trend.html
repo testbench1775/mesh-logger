@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trend Data Visualization</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Leaflet CSS for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        /* Ensuring the grid squares fill the page */
+        #trendPlot, #locationMap, #dataTableContainer {
+            height: 100%;
+            width: 100%;
+        }
+
+        /* Container for grid layout */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            height: 100vh; /* Full page height */
+            padding: 10px;
+        }
+
+        /* Customizing map color for temperature */
+        .marker-hot { background-color: red; }
+        .marker-cold { background-color: blue; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="grid-container">
+        <!-- Top-left: Trend Plot -->
+        <div id="trendPlot" class="border"></div>
+        
+        <!-- Top-right: Location Map -->
+        <div id="locationMap" class="border"></div>
+        
+        <!-- Bottom: Data Table spanning two columns -->
+        <div id="dataTableContainer" class="border table-responsive" style="grid-column: 1 / span 2;">
+            <table id="dataTable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Node ID</th>
+                        <th>Temperature (°C)</th>
+                        <th>Humidity (%)</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Plot Trend?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be dynamically inserted -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS and dependencies -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Plotly for trend plotting -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<!-- Leaflet JS for maps -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Simulated data for nodes
+        const nodeData = [
+            {
+                sender_node_id: '!6eba4a83',
+                temperature: 23.5,
+                humidity: 60,
+                latitude: 52.51627,
+                longitude: 13.3777,
+                timestamp: '2024-09-22 15:30:00'
+            },
+            {
+                sender_node_id: '!6eba4a84',
+                temperature: 10.0,
+                humidity: 50,
+                latitude: 34.05223,
+                longitude: -118.24368,
+                timestamp: '2024-09-22 14:15:00'
+            }
+            // More node data can be added here
+        ];
+
+        // === Initialize trend plot ===
+        const trendPlot = document.getElementById('trendPlot');
+        const trendTraces = [];  // Array to hold plot traces for each node
+
+        // Function to plot the trend data
+        function plotTrends() {
+            const layout = {
+                title: 'Node Temperature Trends',
+                xaxis: { title: 'Time' },
+                yaxis: { title: 'Temperature (°C)' },
+                height: trendPlot.offsetHeight,
+                width: trendPlot.offsetWidth
+            };
+            Plotly.newPlot(trendPlot, trendTraces, layout);
+        }
+
+        // === Initialize Leaflet map ===
+        const locationMap = L.map('locationMap').setView([20, 0], 2);  // World view
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(locationMap);
+
+        // === Populate the table and set up map markers ===
+        const dataTableBody = document.querySelector('#dataTable tbody');
+        nodeData.forEach(node => {
+            // Add row to data table
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${node.sender_node_id}</td>
+                <td>${node.temperature}</td>
+                <td>${node.humidity}</td>
+                <td>${node.latitude}</td>
+                <td>${node.longitude}</td>
+                <td><input type="checkbox" data-node-id="${node.sender_node_id}" checked></td>
+            `;
+            dataTableBody.appendChild(row);
+
+            // Add a marker to the map
+            const tempColor = node.temperature > 20 ? 'marker-hot' : 'marker-cold';
+            const marker = L.circleMarker([node.latitude, node.longitude], {
+                color: node.temperature > 20 ? 'red' : 'blue',
+                radius: 8
+            }).addTo(locationMap).bindPopup(`Node: ${node.sender_node_id}<br>Temp: ${node.temperature}°C`);
+
+            // Fit map bounds to markers
+            if (locationMap._layers.length === 1) {
+                locationMap.fitBounds(L.latLngBounds([marker.getLatLng()]));
+            }
+
+            // Add trace to the trend plot
+            const trace = {
+                x: [node.timestamp],  // You can add multiple timestamps here for trends
+                y: [node.temperature],  // Temperature trend over time
+                name: node.sender_node_id,
+                mode: 'lines',
+                type: 'scatter'
+            };
+            trendTraces.push(trace);
+        });
+
+        plotTrends();
+
+        // === Enable/Disable plotting based on checkbox state ===
+        $('#dataTable input[type="checkbox"]').change(function () {
+            const nodeId = $(this).data('node-id');
+            const enabled = $(this).is(':checked');
+
+            if (enabled) {
+                // Re-enable trace for the node
+                const trace = trendTraces.find(t => t.name === nodeId);
+                Plotly.addTraces(trendPlot, trace);
+            } else {
+                // Remove trace for the node
+                const traceIndices = trendTraces.map((t, i) => (t.name === nodeId ? i : -1)).filter(i => i !== -1);
+                Plotly.deleteTraces(trendPlot, traceIndices);
+            }
+        });
+
+        // === Save and load preferences to/from localStorage ===
+        function savePreferences() {
+            const prefs = {
+                disabledNodes: []
+            };
+            $('#dataTable input[type="checkbox"]:not(:checked)').each(function () {
+                prefs.disabledNodes.push($(this).data('node-id'));
+            });
+            localStorage.setItem('plotPreferences', JSON.stringify(prefs));
+        }
+
+        function loadPreferences() {
+            const prefs = JSON.parse(localStorage.getItem('plotPreferences') || '{}');
+            if (prefs.disabledNodes) {
+                prefs.disabledNodes.forEach(nodeId => {
+                    $(`#dataTable input[data-node-id="${nodeId}"]`).prop('checked', false).trigger('change');
+                });
+            }
+        }
+
+        // Load preferences on page load
+        loadPreferences();
+
+        // Save preferences on page unload
+        window.addEventListener('beforeunload', savePreferences);
+    });
+</script>
+
+</body>
+</html>

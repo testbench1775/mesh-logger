@@ -42,6 +42,10 @@ def index():
 @app.route('/data')
 def dataTable():
     return render_template('data.html', flask_path=system_config['flask_path'])  # Ensure index.html is in the 'templates' folder
+
+@app.route('/trend')
+def trendData():
+    return render_template('trend.html', flask_path=system_config['flask_path'])  # Ensure index.html is in the 'templates' folder
  
 # Route to provide telemetry data as JSON
 @app.route('/get-telemetry-data', methods=['GET'])
@@ -246,6 +250,70 @@ def sync_db():
 
 
     return jsonify({"message": "Data received and stored.", "status": "success"})
+
+@app.route('/get-trend-data', methods=['GET'])
+@limit_referrer(["https://testbench.cc/meshlogger/"])
+def get_trend_data():
+    # Retrieve query parameters
+    node_ids = request.args.get('node')
+    days = request.args.get('days')
+
+    # Validate node_ids and days
+    if not node_ids:
+        return jsonify({"error": "No node IDs provided"}), 400
+
+    node_ids_list = node_ids.split(',')
+
+    # Determine the time range
+    date_filter = ""
+    if days:
+        try:
+            days = int(days)
+            date_limit = datetime.now(timezone.utc) - timedelta(days=days)
+            date_filter = f"AND timestamp >= '{date_limit.strftime('%Y-%m-%d %H:%M:%S')}'"
+        except ValueError:
+            return jsonify({"error": "Invalid 'days' value"}), 400
+
+    # Construct the SQL query to retrieve the trend data for the specified nodes
+    query = f'''
+        SELECT *
+        FROM trendData
+        WHERE sender_node_id IN ({','.join(['?'] * len(node_ids_list))})
+        {date_filter}
+        ORDER BY timestamp DESC;
+    '''
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(query, node_ids_list)
+        trend_data = cursor.fetchall()
+
+        # Extract column names for JSON conversion
+        columns = [column[0] for column in cursor.description]
+
+        # Initialize a dictionary to group data by sender_node_id
+        grouped_data = {}
+
+        # Format the data into a dictionary grouped by sender_node_id
+        for row in trend_data:
+            row_dict = dict(zip(columns, row))
+            sender_node_id = row_dict['sender_node_id']
+
+            # Add the record to the appropriate sender_node_id group
+            if sender_node_id not in grouped_data:
+                grouped_data[sender_node_id] = []
+
+            grouped_data[sender_node_id].append(row_dict)
+
+        conn.close()
+
+        return jsonify(grouped_data)
+
+    except sqlite3.Error as e:
+        conn.close()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
