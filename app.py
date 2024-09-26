@@ -301,6 +301,10 @@ def get_trend_data():
             row_dict = dict(zip(columns, row))
             sender_node_id = row_dict['sender_node_id']
 
+            # Convert temperature from Celsius to Fahrenheit
+            if row_dict.get('temperature') is not None:
+                row_dict['temperature'] = celsius_to_fahrenheit(row_dict['temperature'])
+
             # Add the record to the appropriate sender_node_id group
             if sender_node_id not in grouped_data:
                 grouped_data[sender_node_id] = []
@@ -314,6 +318,7 @@ def get_trend_data():
     except sqlite3.Error as e:
         conn.close()
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)

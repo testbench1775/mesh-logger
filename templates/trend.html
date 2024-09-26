@@ -46,11 +46,11 @@
                 <thead>
                     <tr>
                         <th>Node ID</th>
-                        <th>Temperature (°C)</th>
-                        <th>Humidity (%)</th>
-                        <th>Latitude</th>
-                        <th>Longitude</th>
-                        <th>Plot Trend?</th>
+                        <th>Timestamp</th>
+                        <th>Temperature (°C) <input type="checkbox" id="toggleTemp" checked></th>
+                        <th>Humidity (%) <input type="checkbox" id="toggleHumidity" checked></th>
+                        <th>Pressure (hPa) <input type="checkbox" id="togglePressure" checked></th>
+                        <th>Battery Level (%) <input type="checkbox" id="toggleBattery" checked></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -70,133 +70,276 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // Simulated data for nodes
-        const nodeData = [
-            {
-                sender_node_id: '!6eba4a83',
-                temperature: 23.5,
-                humidity: 60,
-                latitude: 52.51627,
-                longitude: 13.3777,
-                timestamp: '2024-09-22 15:30:00'
-            },
-            {
-                sender_node_id: '!6eba4a84',
-                temperature: 10.0,
-                humidity: 50,
-                latitude: 34.05223,
-                longitude: -118.24368,
-                timestamp: '2024-09-22 14:15:00'
-            }
-            // More node data can be added here
+    let locationMap, marker;
+    let plotTraces = []; // Store the current plot data globally for easy reference
+    let markers = [];  // Make sure this is globally declared
+
+    function getColorByTemperature(temperature) {
+        // Ensure the input is a valid number
+        if (typeof temperature !== 'number' || isNaN(temperature)) {
+            return '#000000'; // Default to black for invalid input
+        }
+
+        const colorMap = [
+            { min: -Infinity, max: -40, color: '#04060a' }, // Black
+            { min: -40, max: -35, color: '#0b0f15' }, // Black Blue
+            { min: -35, max: -30, color: '#14191f' }, // Almost Black
+            { min: -30, max: -25, color: '#1c2329' }, // Near Black Blue
+            { min: -25, max: -20, color: '#28313c' }, // Deep Dark Gray-Blue
+            { min: -20, max: -15, color: '#343d47' }, // Dark Cold Gray
+            { min: -15, max: -10, color: '#434f5c' }, // Dark Gray-Blue
+            { min: -10, max: -5, color: '#4f6173' }, // Darker Blue-Gray
+            { min: -5, max: 0, color: '#647687' }, // Cold Gray-Blue
+            { min: 0, max: 5, color: '#7b8e9a' }, // Light Blue-Gray
+            { min: 5, max: 10, color: '#889ba9' }, // Pale Gray-Blue
+            { min: 10, max: 15, color: '#9aadbd' }, // Lighter Gray-Blue
+            { min: 15, max: 20, color: '#a1b3c7' }, // Light Gray-Blue
+            { min: 20, max: 25, color: '#02153f' }, // Darkest Blue
+            { min: 25, max: 30, color: '#0a2358' }, // Deep Blue
+            { min: 30, max: 35, color: '#10367c' }, // Darker Navy Blue
+            { min: 35, max: 40, color: '#164f9f' }, // Navy Blue
+            { min: 40, max: 45, color: '#1a73b6' }, // Light Navy Blue
+            { min: 45, max: 50, color: '#2d8ec4' }, // Turquoise
+            { min: 50, max: 55, color: '#4bacc7' }, // Light Turquoise
+            { min: 55, max: 60, color: '#65d7c8' }, // Teal
+            { min: 60, max: 65, color: '#7edc9a' }, // Light Teal
+            { min: 65, max: 70, color: '#a4d27a' }, // Light Lime
+            { min: 70, max: 75, color: '#c5dc6b' }, // Lime Green
+            { min: 75, max: 80, color: '#ffe39e' }, // Light Yellow
+            { min: 80, max: 85, color: '#ffd58a' }, // Yellow
+            { min: 85, max: 90, color: '#ffb471' }, // Gold
+            { min: 90, max: 95, color: '#ff9a56' }, // Orange-Gold
+            { min: 95, max: 100, color: '#ff8144' }, // Warm Orange
+            { min: 100, max: 105, color: '#ff6100' }, // Orange
+            { min: 105, max: 110, color: '#e53f00' }, // Red-Orange
+            { min: 110, max: 115, color: '#d11f00' }, // Bright Red
+            { min: 115, max: 120, color: '#b60000' }, // Red
+            { min: 120, max: Infinity, color: '#6b0000' } // Dark Red
         ];
 
-        // === Initialize trend plot ===
-        const trendPlot = document.getElementById('trendPlot');
-        const trendTraces = [];  // Array to hold plot traces for each node
-
-        // Function to plot the trend data
-        function plotTrends() {
-            const layout = {
-                title: 'Node Temperature Trends',
-                xaxis: { title: 'Time' },
-                yaxis: { title: 'Temperature (°C)' },
-                height: trendPlot.offsetHeight,
-                width: trendPlot.offsetWidth
-            };
-            Plotly.newPlot(trendPlot, trendTraces, layout);
-        }
-
-        // === Initialize Leaflet map ===
-        const locationMap = L.map('locationMap').setView([20, 0], 2);  // World view
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(locationMap);
-
-        // === Populate the table and set up map markers ===
-        const dataTableBody = document.querySelector('#dataTable tbody');
-        nodeData.forEach(node => {
-            // Add row to data table
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${node.sender_node_id}</td>
-                <td>${node.temperature}</td>
-                <td>${node.humidity}</td>
-                <td>${node.latitude}</td>
-                <td>${node.longitude}</td>
-                <td><input type="checkbox" data-node-id="${node.sender_node_id}" checked></td>
-            `;
-            dataTableBody.appendChild(row);
-
-            // Add a marker to the map
-            const tempColor = node.temperature > 20 ? 'marker-hot' : 'marker-cold';
-            const marker = L.circleMarker([node.latitude, node.longitude], {
-                color: node.temperature > 20 ? 'red' : 'blue',
-                radius: 8
-            }).addTo(locationMap).bindPopup(`Node: ${node.sender_node_id}<br>Temp: ${node.temperature}°C`);
-
-            // Fit map bounds to markers
-            if (locationMap._layers.length === 1) {
-                locationMap.fitBounds(L.latLngBounds([marker.getLatLng()]));
+        for (const range of colorMap) {
+            if (temperature >= range.min && temperature < range.max) {
+                return range.color;
             }
+        }
+        return '#000000'; // Default to black if not mapped
+    }
 
-            // Add trace to the trend plot
-            const trace = {
-                x: [node.timestamp],  // You can add multiple timestamps here for trends
-                y: [node.temperature],  // Temperature trend over time
-                name: node.sender_node_id,
-                mode: 'lines',
-                type: 'scatter'
-            };
-            trendTraces.push(trace);
-        });
-
-        plotTrends();
-
-        // === Enable/Disable plotting based on checkbox state ===
-        $('#dataTable input[type="checkbox"]').change(function () {
-            const nodeId = $(this).data('node-id');
-            const enabled = $(this).is(':checked');
-
-            if (enabled) {
-                // Re-enable trace for the node
-                const trace = trendTraces.find(t => t.name === nodeId);
-                Plotly.addTraces(trendPlot, trace);
+    // Initialize or update the map
+    function addMapNode(nodeData) {
+        let marker_
+        let firstNode_
+        nodeData.forEach((node, index) => {
+            if (index > 0) {  // Start from the second item (index 1)
+                marker_ = L.circleMarker([node.latitude, node.longitude], {
+                    color: getColorByTemperature(node.temperature),
+                    radius: 2
+                }).addTo(locationMap).bindPopup(`Temp: ${node.temperature}°F`);
+                // console.error('bla')
             } else {
-                // Remove trace for the node
-                const traceIndices = trendTraces.map((t, i) => (t.name === nodeId ? i : -1)).filter(i => i !== -1);
-                Plotly.deleteTraces(trendPlot, traceIndices);
+                firstNode_ = node;
             }
         });
 
-        // === Save and load preferences to/from localStorage ===
-        function savePreferences() {
-            const prefs = {
-                disabledNodes: []
-            };
-            $('#dataTable input[type="checkbox"]:not(:checked)').each(function () {
-                prefs.disabledNodes.push($(this).data('node-id'));
-            });
-            localStorage.setItem('plotPreferences', JSON.stringify(prefs));
-        }
+        marker_ = L.circleMarker([firstNode_.latitude, firstNode_.longitude], {
+            color: getColorByTemperature(firstNode_.temperature),
+            radius: 8
+        }).addTo(locationMap).bindPopup(`Most Recent Temp: ${firstNode_.temperature}°F`);
 
-        function loadPreferences() {
-            const prefs = JSON.parse(localStorage.getItem('plotPreferences') || '{}');
-            if (prefs.disabledNodes) {
-                prefs.disabledNodes.forEach(nodeId => {
-                    $(`#dataTable input[data-node-id="${nodeId}"]`).prop('checked', false).trigger('change');
-                });
+        markers.push(marker_);  // Keep track of all markers
+    }
+
+    // Clear all the map markers
+    function clearMapNodes() {
+        markers.forEach(marker => {
+            locationMap.removeLayer(marker);
+        });
+        markers = [];
+    }
+
+    // Update the Plotly trend plot
+    function updatePlot(nodeData) {
+        const trendPlot = document.getElementById('trendPlot');
+        
+        plotTraces = [
+            {
+                x: nodeData.map(row => row.timestamp),
+                y: nodeData.map(row => row.temperature),
+                name: 'Temperature (°C)',
+                mode: 'lines',
+                visible: document.getElementById('toggleTemp').checked ? true : 'legendonly'
+            },
+            {
+                x: nodeData.map(row => row.timestamp),
+                y: nodeData.map(row => row.humidity),
+                name: 'Humidity (%)',
+                mode: 'lines',
+                visible: document.getElementById('toggleHumidity').checked ? true : 'legendonly'
+            },
+            {
+                x: nodeData.map(row => row.timestamp),
+                y: nodeData.map(row => row.pressure),
+                name: 'Pressure (hPa)',
+                mode: 'lines',
+                visible: document.getElementById('togglePressure').checked ? true : 'legendonly'
+            },
+            {
+                x: nodeData.map(row => row.timestamp),
+                y: nodeData.map(row => row.battery_level),
+                name: 'Battery Level (%)',
+                mode: 'lines',
+                visible: document.getElementById('toggleBattery').checked ? true : 'legendonly'
             }
+        ];
+
+        const layout = {
+            title: 'Trend Data',
+            height: trendPlot.offsetHeight,
+            width: trendPlot.offsetWidth,
+            xaxis: { title: 'Time' },
+            yaxis: { title: 'Value' }
+        };
+
+        // Use Plotly.react to efficiently update the plot
+        Plotly.react(trendPlot, plotTraces, layout);
+    }
+
+    function updateTraceVisibility() {
+        // Check if plotTraces exist and are valid
+        if (!plotTraces || plotTraces.length === 0) {
+            console.error('No plot traces available for visibility update.');
+            return;  // Exit early if there are no traces to update
         }
 
-        // Load preferences on page load
-        loadPreferences();
+        plotTraces.forEach((trace, index) => {
+            const checkboxId = `toggle${trace.name.split(' ')[0]}`;  // Get the correct checkbox
+            const isVisible = document.getElementById(checkboxId).checked;
+            Plotly.restyle('trendPlot', { visible: isVisible ? true : 'legendonly' }, [index]);
+        });
+    }
 
-        // Save preferences on page unload
-        window.addEventListener('beforeunload', savePreferences);
+    // Update the data table
+    function updateTable(nodeData) {
+        const dataTableBody = document.querySelector('#dataTable tbody');
+        
+        // Clear existing table rows
+        dataTableBody.innerHTML = '';
+        
+        // Populate with new data
+        nodeData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row.sender_node_id}</td>
+                <td>${row.timestamp}</td>
+                <td>${row.temperature}</td>
+                <td>${row.humidity}</td>
+                <td>${row.pressure}</td>
+                <td>${row.battery_level}</td>
+            `;
+            dataTableBody.appendChild(tr);
+        });
+    }
+
+    function fetchTelemetryData(apiUrl) {
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                const nodeId = Object.keys(data)[0];
+                const nodeData = data[nodeId];
+
+                if (!nodeData || nodeData.length === 0) {
+                    console.error('No telemetry data found.');
+                    return;  // Exit early if no data is found
+                }
+
+                // Rest of your logic...
+                if (locationMap) {
+                    locationMap.remove();
+                }
+
+                locationMap = L.map('locationMap').setView([nodeData[0].latitude, nodeData[0].longitude], 10);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(locationMap);
+
+                clearMapNodes();
+
+                addMapNode(nodeData)
+
+                // Update plot and table with valid data
+                updatePlot(nodeData);
+                updateTable(nodeData);
+            })
+            .catch(error => console.error('Error fetching telemetry data:', error));
+    }
+
+    // === Save preferences to localStorage ===
+    function savePreferences() {
+        const prefs = {
+            temp: document.getElementById('toggleTemp').checked,
+            humidity: document.getElementById('toggleHumidity').checked,
+            pressure: document.getElementById('togglePressure').checked,
+            battery: document.getElementById('toggleBattery').checked
+        };
+        localStorage.setItem('plotPreferences', JSON.stringify(prefs));
+    }
+
+    function loadPreferences() {
+        const prefs = JSON.parse(localStorage.getItem('plotPreferences') || '{}');
+        document.getElementById('toggleTemp').checked = prefs.temp !== undefined ? prefs.temp : true;
+        document.getElementById('toggleHumidity').checked = prefs.humidity !== undefined ? prefs.humidity : true;
+        document.getElementById('togglePressure').checked = prefs.pressure !== undefined ? prefs.pressure : true;
+        document.getElementById('toggleBattery').checked = prefs.battery !== undefined ? prefs.battery : true;
+
+        document.getElementById('toggleTemp').dispatchEvent(new Event('change'));
+        document.getElementById('toggleHumidity').dispatchEvent(new Event('change'));
+        document.getElementById('togglePressure').dispatchEvent(new Event('change'));
+        document.getElementById('toggleBattery').dispatchEvent(new Event('change'));
+    }
+
+    // === Checkbox toggling for columns ===
+    function updateVisibility(traceIndex, isVisible) {
+        Plotly.restyle(trendPlot, { visible: isVisible ? true : 'legendonly' }, [traceIndex]);
+    }
+
+    // Event listeners for checkboxes
+    document.getElementById('toggleTemp').addEventListener('change', function () {
+        updateVisibility(0, this.checked);
     });
+
+    document.getElementById('toggleHumidity').addEventListener('change', function () {
+        updateVisibility(1, this.checked);
+    });
+
+    document.getElementById('togglePressure').addEventListener('change', function () {
+        updateVisibility(2, this.checked);
+    });
+
+    document.getElementById('toggleBattery').addEventListener('change', function () {
+        updateVisibility(3, this.checked);
+    });
+
+    // Set up the API URL based on query params or defaults
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedNodeId = urlParams.get('node');
+    const selectedNodeTime = urlParams.get('days');
+    let apiUrl = '/get-trend-data?node=!fa6dc46c&days=7';  // Default argument
+    if (selectedNodeId) {
+        apiUrl = '/get-trend-data?node=' + selectedNodeId + '&days=' + selectedNodeTime;
+    }
+
+    // Load preferences on page load
+    loadPreferences();
+
+    // Save preferences on page unload
+    window.addEventListener('beforeunload', savePreferences);
+
+    // Call fetchTelemetryData every 60 seconds and initially
+    setInterval(() => fetchTelemetryData(apiUrl), 60000);
+    fetchTelemetryData(apiUrl);
 </script>
+
+
 
 </body>
 </html>

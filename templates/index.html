@@ -47,7 +47,7 @@
     });
 
     var markers = {};  // Dictionary to store markers by sender_node_id
-    var initialLoad = false;  // Flag to indicate if it's the first load
+    var initialLoad = false;  // Flag to indicate if it's the first load. Set to false to disable auto sizing.
 
     function generatePopupContent(item) {
         return `

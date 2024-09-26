@@ -84,7 +84,6 @@ def initialize_database(system_config):
         logger.error(f"Error initializing database: {e}")
         logger.error(traceback.format_exc())  # Log the full traceback for debugging
 
-
 def upsert_node_data(
     system_config, 
     sender_node_id, 
@@ -265,8 +264,6 @@ def add_trend_data(system_config):
     except sqlite3.Error as e:
         logger.error(f"Error adding trend data: {e}")
 
-
-
 def process_and_insert_telemetry_data(system_config, interface):
     logger = system_config['logger']
 
@@ -397,7 +394,6 @@ def sync_data_to_server(system_config):
         logger.error("An error occurred during data sync: %s", str(e))
         system_config['logger'].info(f"--------------------------------------------------------")
 
-
 def sync_database_periodically(system_config, interval=60):
     """
     This function will run in a separate thread to sync the database to the server periodically.
@@ -417,3 +413,4 @@ def sync_trend_periodically(system_config, interval=60):
         system_config['logger'].info("Appending trend data...")
         add_trend_data(system_config)
         system_config['logger'].info("Append successfully.") 
+
